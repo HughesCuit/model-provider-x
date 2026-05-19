@@ -5,13 +5,30 @@
   "private": false,
   "license": "MIT",
   "author": "HHWY Inc.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/HughesCuit/model-provider-x.git"
+  },
+  "bugs": {
+    "url": "https://github.com/HughesCuit/model-provider-x/issues"
+  },
+  "homepage": "https://github.com/HughesCuit/model-provider-x#readme",
   "type": "module",
   "main": "dist/cli/index.js",
   "bin": {
     "model-provider-x": "dist/cli/index.js"
   },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
+    "prepack": "npm run build",
     "start": "node dist/cli/index.js",
     "test": "vitest run",
     "test:watch": "vitest",
