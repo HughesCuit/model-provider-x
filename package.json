@@ -1,0 +1,33 @@
+{
+  "name": "model-provider-x",
+  "version": "0.1.0",
+  "description": "TUI configurator and local API proxy for wiring custom model providers into OpenCode and Claude Code.",
+  "private": false,
+  "license": "MIT",
+  "author": "HHWY Inc.",
+  "type": "module",
+  "main": "dist/cli/index.js",
+  "bin": {
+    "model-provider-x": "dist/cli/index.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/cli/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint . --ext .ts,.tsx",
+    "format": "prettier --write ."
+  },
+  "dependencies": {
+    "jsonc-parser": "^3.3.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "@types/node": "^24.0.0",
+    "eslint": "^9.0.0",
+    "prettier": "^3.0.0",
+    "typescript": "^5.9.0",
+    "typescript-eslint": "^8.0.0",
+    "vitest": "^3.0.0"
+  }
+}
