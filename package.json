@@ -1,5 +1,5 @@
 {
-  "name": "model-provider-x",
+  "name": "@heventure/model-provider-x",
   "version": "0.1.0",
   "description": "TUI configurator and local API proxy for wiring custom model providers into OpenCode and Claude Code.",
   "private": false,

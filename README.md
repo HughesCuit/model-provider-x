@@ -17,6 +17,12 @@ npm install
 npm run build
 ```
 
+Or run the published package directly:
+
+```bash
+npx @heventure/model-provider-x --help
+```
+
 ## OpenCode Setup
 
 Run the TUI wizard:
@@ -59,10 +65,10 @@ Upstream provider keys are stored in `~/.config/model-provider-x/config.jsonc`, 
 ## Commands
 
 ```bash
-node dist/cli/index.js --help
-node dist/cli/index.js setup --target claude-code
-node dist/cli/index.js proxy --profile <id>
-node dist/cli/index.js config print --profile <id>
+npx @heventure/model-provider-x --help
+npx @heventure/model-provider-x setup --target claude-code
+npx @heventure/model-provider-x proxy --profile <id>
+npx @heventure/model-provider-x config print --profile <id>
 ```
 
 ## Development
