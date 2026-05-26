@@ -92,6 +92,46 @@ describe("proxy server", () => {
     );
   });
 
+  it("maps Claude model aliases to the selected upstream model for Messages requests", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        id: "chatcmpl_1",
+        model: "qwen",
+        choices: [{ message: { role: "assistant", content: "hello" }, finish_reason: "stop" }]
+      })
+    });
+    const server = await startProxyServer({
+      profileId: "local",
+      config: toolConfig(),
+      host: "127.0.0.1",
+      port: 0,
+      fetchImpl
+    });
+    servers.push(server);
+
+    const response = await fetch(`${server.baseURL}/v1/messages`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        Authorization: "Bearer mpx-token"
+      },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-5",
+        max_tokens: 128,
+        messages: [{ role: "user", content: "Hello" }]
+      })
+    });
+
+    expect(response.status).toBe(200);
+    const upstreamBody = JSON.parse(fetchImpl.mock.calls[0][1].body as string);
+    expect(upstreamBody).toMatchObject({
+      model: "qwen",
+      max_tokens: 128,
+      messages: [{ role: "user", content: "Hello" }]
+    });
+  });
+
   it("emits Anthropic streaming events for chat completion streams", async () => {
     const upstreamBody = [
       'data: {"id":"chatcmpl_1","model":"qwen","choices":[{"delta":{"content":"Hi"}}]}',
@@ -132,5 +172,105 @@ describe("proxy server", () => {
     expect(text).toContain("event: content_block_delta");
     expect(text).toContain('"text":"Hi"');
     expect(text).toContain("event: message_stop");
+  });
+
+  it("proxies non-streaming Responses requests to chat completions", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        id: "chatcmpl_1",
+        model: "qwen",
+        choices: [{ message: { role: "assistant", content: "hello" }, finish_reason: "stop" }],
+        usage: { prompt_tokens: 5, completion_tokens: 1 }
+      })
+    });
+    const server = await startProxyServer({
+      profileId: "local",
+      config: toolConfig(),
+      host: "127.0.0.1",
+      port: 0,
+      fetchImpl
+    });
+    servers.push(server);
+
+    const response = await fetch(`${server.baseURL}/v1/responses`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        Authorization: "Bearer mpx-token"
+      },
+      body: JSON.stringify({
+        model: "qwen",
+        instructions: "Be brief.",
+        input: [{ role: "user", content: [{ type: "input_text", text: "Hello" }] }]
+      })
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      object: "response",
+      output_text: "hello",
+      output: [{ type: "message", role: "assistant" }]
+    });
+    expect(fetchImpl).toHaveBeenCalledWith(
+      "http://upstream.test/v1/chat/completions",
+      expect.objectContaining({
+        method: "POST",
+        headers: expect.objectContaining({ Authorization: "Bearer sk-upstream" }),
+        body: JSON.stringify({
+          model: "qwen",
+          messages: [
+            { role: "system", content: "Be brief." },
+            { role: "user", content: "Hello" }
+          ]
+        })
+      })
+    );
+  });
+
+  it("passes through OpenAI chat completion requests", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        id: "chatcmpl_1",
+        model: "qwen",
+        choices: [{ message: { role: "assistant", content: "hello" }, finish_reason: "stop" }]
+      })
+    });
+    const server = await startProxyServer({
+      profileId: "local",
+      config: toolConfig(),
+      host: "127.0.0.1",
+      port: 0,
+      fetchImpl
+    });
+    servers.push(server);
+
+    const response = await fetch(`${server.baseURL}/v1/chat/completions`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        Authorization: "Bearer mpx-token"
+      },
+      body: JSON.stringify({
+        model: "qwen",
+        messages: [{ role: "user", content: "Hello" }]
+      })
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ id: "chatcmpl_1" });
+    expect(fetchImpl).toHaveBeenCalledWith(
+      "http://upstream.test/v1/chat/completions",
+      expect.objectContaining({
+        method: "POST",
+        headers: expect.objectContaining({ Authorization: "Bearer sk-upstream" })
+      })
+    );
+    const upstreamBody = new TextDecoder().decode(fetchImpl.mock.calls[0][1].body as Uint8Array);
+    expect(JSON.parse(upstreamBody)).toEqual({
+      model: "qwen",
+      messages: [{ role: "user", content: "Hello" }]
+    });
   });
 });

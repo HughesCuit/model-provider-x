@@ -6,6 +6,7 @@ export interface Choice<T = string> {
   value: T;
   hint?: string;
   disabled?: boolean;
+  selected?: boolean;
 }
 
 const width = 60;
@@ -82,7 +83,11 @@ export async function multiSelectChoices<T>(
   choices: Choice<T>[],
   streams: { input: NodeJS.ReadStream; output: NodeJS.WriteStream } = { input: process.stdin, output: process.stdout }
 ): Promise<T[]> {
-  let selected = new Set(choices.map((choice, index) => (choice.disabled ? -1 : index)).filter((index) => index >= 0));
+  let selected = new Set(
+    choices
+      .map((choice, index) => (choice.disabled || choice.selected === false ? -1 : index))
+      .filter((index) => index >= 0)
+  );
   const choice = await runKeyMenu(
     (cursor) => renderMultiSelect(title, choices, cursor, selected),
     choices,

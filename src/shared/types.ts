@@ -24,6 +24,7 @@ export interface OpenCodeProviderConfig {
   options: {
     baseURL: string;
     apiKey?: string;
+    setCacheKey?: boolean;
   };
   models: Record<string, OpenCodeModelConfig>;
 }

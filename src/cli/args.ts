@@ -6,6 +6,8 @@ export interface CliOptions {
   print: boolean;
   providerId?: string;
   providerName?: string;
+  providerPreset?: string;
+  proxy?: boolean;
   yes: boolean;
 }
 
@@ -44,6 +46,15 @@ export function parseCliArgs(argv: string[]): CliOptions {
         break;
       case "--name":
         options.providerName = next();
+        break;
+      case "--provider":
+        options.providerPreset = next();
+        break;
+      case "--proxy":
+        options.proxy = true;
+        break;
+      case "--direct":
+        options.proxy = false;
         break;
       case "--print":
         options.print = true;
@@ -104,14 +115,18 @@ export function usage(): string {
 
 Usage:
   model-provider-x [options]
+  model-provider-x setup [options]
 
 Options:
   --base-url <url>     OpenAI-compatible API base URL, for example http://localhost:8888/v1
   --api-key <key>      Optional API key. Written into config when provided.
   --name <name>        Provider display name.
   --id <id>            Provider id used under provider.<id>.
+  --provider <id>      Use a built-in provider preset, for example lmstudio or openai.
+  --proxy              Write agent config through the local compatibility proxy.
+  --direct             Write agent config directly to the upstream provider.
   --models <list>      Comma-separated model ids. Skips interactive model selection.
-  --config <path>      OpenCode config path to write.
+  --config <path>      OpenCode config path to write when targeting OpenCode.
   --print              Print generated JSON and do not write config.
   --yes, -y            Accept defaults in non-interactive prompts.
   --help, -h           Show this help.

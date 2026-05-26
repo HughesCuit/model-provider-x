@@ -10,6 +10,7 @@ import {
   type ChatCompletionResponse,
   type ChatStreamChunk
 } from "./anthropic-chat.js";
+import { chatCompletionToResponses, responsesToChatCompletionRequest, type ResponsesRequest } from "./responses.js";
 import { parseOpenAiSseStream } from "./sse.js";
 
 type FetchLike = (input: string, init: RequestInit) => Promise<{
@@ -69,6 +70,16 @@ export async function startProxyServer(input: StartProxyServerInput): Promise<Pr
         return;
       }
 
+      if (request.method === "POST" && (request.url === "/v1/chat/completions" || request.url === "/v1/completions")) {
+        await passthroughOpenAi(request, response, profile, fetchImpl, request.url);
+        return;
+      }
+
+      if (request.method === "POST" && request.url === "/v1/responses") {
+        await handleResponses(request, response, profile, fetchImpl);
+        return;
+      }
+
       writeJson(response, 404, { error: { type: "not_found_error", message: "Not found" } });
     } catch (error) {
       writeJson(response, statusForError(error), {
@@ -85,13 +96,91 @@ export async function startProxyServer(input: StartProxyServerInput): Promise<Pr
   };
 }
 
+async function passthroughOpenAi(
+  request: IncomingMessage,
+  response: ServerResponse,
+  profile: ToolConfig["profiles"][string],
+  fetchImpl: FetchLike,
+  path: string
+) {
+  const body = await readRaw(request);
+  const upstream = await fetchImpl(`${profile.baseURL.replace(/\/+$/, "")}${path.replace(/^\/v1/, "")}`, {
+    method: "POST",
+    headers: {
+      "content-type": request.headers["content-type"] ?? "application/json",
+      ...(profile.apiKey ? { Authorization: `Bearer ${profile.apiKey}` } : {})
+    },
+    body: new Uint8Array(body)
+  });
+
+  if (!upstream.ok) {
+    const message = upstream.text ? await upstream.text() : upstream.statusText;
+    writeJson(response, upstream.status ?? 502, { error: { type: "upstream_error", message } });
+    return;
+  }
+
+  if (isStreamingOpenAiRequest(body) && upstream.body) {
+    response.writeHead(200, {
+      "content-type": "text/event-stream; charset=utf-8"
+    });
+    for await (const chunk of upstream.body) {
+      response.write(Buffer.from(chunk));
+    }
+    response.end();
+    return;
+  }
+
+  if (!upstream.json) {
+    throw new Error("Upstream response did not include JSON");
+  }
+  writeJson(response, 200, await upstream.json());
+}
+
+function isStreamingOpenAiRequest(body: Buffer): boolean {
+  try {
+    return Boolean((JSON.parse(body.toString("utf8")) as { stream?: unknown }).stream);
+  } catch {
+    return false;
+  }
+}
+
+async function handleResponses(
+  request: IncomingMessage,
+  response: ServerResponse,
+  profile: ToolConfig["profiles"][string],
+  fetchImpl: FetchLike
+) {
+  const body = (await readJson(request)) as ResponsesRequest;
+  const chatRequest = responsesToChatCompletionRequest(body);
+  const upstream = await fetchImpl(`${profile.baseURL.replace(/\/+$/, "")}/chat/completions`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      ...(profile.apiKey ? { Authorization: `Bearer ${profile.apiKey}` } : {})
+    },
+    body: JSON.stringify(chatRequest)
+  });
+
+  if (!upstream.ok) {
+    const message = upstream.text ? await upstream.text() : upstream.statusText;
+    writeJson(response, upstream.status ?? 502, { error: { type: "upstream_error", message } });
+    return;
+  }
+
+  if (!upstream.json) {
+    throw new Error("Upstream response did not include JSON");
+  }
+
+  writeJson(response, 200, chatCompletionToResponses((await upstream.json()) as ChatCompletionResponse));
+}
+
 async function handleMessages(
   request: IncomingMessage,
   response: ServerResponse,
   profile: ToolConfig["profiles"][string],
   fetchImpl: FetchLike
 ) {
-  const body = (await readJson(request)) as AnthropicMessageRequest;
+  const body = normalizeAnthropicModel((await readJson(request)) as AnthropicMessageRequest, profile);
   const chatRequest = anthropicMessageToChatRequest(body);
   const upstream = await fetchImpl(`${profile.baseURL.replace(/\/+$/, "")}/chat/completions`, {
     method: "POST",
@@ -131,6 +220,24 @@ async function handleMessages(
   writeJson(response, 200, chatCompletionToAnthropicMessage((await upstream.json()) as ChatCompletionResponse));
 }
 
+function normalizeAnthropicModel(
+  body: AnthropicMessageRequest,
+  profile: ToolConfig["profiles"][string]
+): AnthropicMessageRequest {
+  if (!isClaudeModelAlias(body.model) || profile.models.includes(body.model) || profile.models.length === 0) {
+    return body;
+  }
+
+  return {
+    ...body,
+    model: profile.models[0]
+  };
+}
+
+function isClaudeModelAlias(model: string): boolean {
+  return /(^claude-|sonnet|opus|haiku)/i.test(model);
+}
+
 function isAuthorized(request: IncomingMessage, authToken: string): boolean {
   const authorization = request.headers.authorization;
   const apiKey = request.headers["x-api-key"];
@@ -138,11 +245,15 @@ function isAuthorized(request: IncomingMessage, authToken: string): boolean {
 }
 
 async function readJson(request: IncomingMessage): Promise<unknown> {
+  return JSON.parse((await readRaw(request)).toString("utf8") || "{}");
+}
+
+async function readRaw(request: IncomingMessage): Promise<Buffer> {
   const chunks: Buffer[] = [];
   for await (const chunk of request) {
     chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
   }
-  return JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}");
+  return Buffer.concat(chunks);
 }
 
 function writeJson(response: ServerResponse, status: number, body: unknown): void {

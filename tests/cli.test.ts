@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { parseCliArgs, parseModelSelection } from "../src/cli/args";
 import { parseCommand } from "../src/cli/commands";
+import { createModelChoices } from "../src/cli/model-choices";
+import { createProviderChoices, getProviderPreset } from "../src/cli/provider-presets";
 import {
   moveCursor,
   renderIntro,
@@ -31,6 +33,8 @@ describe("CLI argument parsing", () => {
       configPath: undefined,
       models: undefined,
       print: false,
+      providerPreset: undefined,
+      proxy: undefined,
       providerId: "unsloth",
       providerName: "Unsloth Local",
       yes: true
@@ -38,13 +42,35 @@ describe("CLI argument parsing", () => {
   });
 
   it("supports print-only mode", () => {
-    expect(parseCliArgs(["--print", "--models", "qwen,gemma"])).toMatchObject({
+    expect(parseCliArgs(["--print", "--provider", "lmstudio", "--proxy", "--models", "qwen,gemma"])).toMatchObject({
       print: true,
+      providerPreset: "lmstudio",
+      proxy: true,
       models: ["qwen", "gemma"]
     });
   });
 
+  it("exposes common provider presets before custom", () => {
+    expect(getProviderPreset("lmstudio")).toMatchObject({
+      id: "lmstudio",
+      name: "LM Studio",
+      baseURL: "http://localhost:1234/v1"
+    });
+
+    expect(createProviderChoices().at(-1)).toEqual({
+      label: "Custom provider",
+      value: "custom",
+      hint: "enter URL and API key manually"
+    });
+  });
+
   it("parses setup and proxy subcommands", () => {
+    expect(parseCommand(["--provider", "lmstudio"])).toMatchObject({
+      command: "setup",
+      target: undefined,
+      options: { providerPreset: "lmstudio" }
+    });
+
     expect(parseCommand(["setup", "--target", "claude-code", "--profile", "local", "--port", "4141"])).toMatchObject({
       command: "setup",
       target: "claude-code",
@@ -52,11 +78,37 @@ describe("CLI argument parsing", () => {
       port: 4141
     });
 
+    expect(parseCommand(["setup", "--provider", "lmstudio"])).toMatchObject({
+      command: "setup",
+      target: undefined,
+      options: { providerPreset: "lmstudio" }
+    });
+
+    expect(parseCommand(["setup", "--target", "codex", "--provider", "lmstudio"])).toMatchObject({
+      command: "setup",
+      target: "codex",
+      options: { providerPreset: "lmstudio" }
+    });
+
     expect(parseCommand(["proxy", "--profile", "local", "--host", "127.0.0.1", "--port", "4141"])).toEqual({
       command: "proxy",
+      action: "run",
       profileId: "local",
       host: "127.0.0.1",
       port: 4141
+    });
+
+    expect(parseCommand(["proxy", "up", "--profile", "local"])).toMatchObject({
+      command: "proxy",
+      action: "up",
+      profileId: "local"
+    });
+    expect(parseCommand(["proxy", "down"])).toEqual({ command: "proxy", action: "down", profileId: undefined, host: undefined, port: undefined });
+    expect(parseCommand(["proxy", "status"])).toEqual({ command: "proxy", action: "status", profileId: undefined, host: undefined, port: undefined });
+    expect(parseCommand(["proxy", "token"])).toEqual({ command: "proxy", action: "token", profileId: undefined, host: undefined, port: undefined });
+    expect(parseCommand(["config", "api-key", "--profile", "local"])).toEqual({
+      command: "config-api-key",
+      profileId: "local"
     });
   });
 
@@ -66,6 +118,26 @@ describe("CLI argument parsing", () => {
     expect(parseModelSelection("", models)).toEqual(models);
     expect(parseModelSelection("1,3", models)).toEqual(["qwen", "gpt-oss"]);
     expect(parseModelSelection("2-3", models)).toEqual(["gemma", "gpt-oss"]);
+  });
+
+  it("marks likely unsupported model names as unchecked by default", () => {
+    const choices = createModelChoices(["qwen3.6-35b", "nomic-embed-text", "text-embedding-bge"]);
+
+    expect(choices).toEqual([
+      { label: "qwen3.6-35b", value: "qwen3.6-35b", selected: true },
+      {
+        label: "nomic-embed-text",
+        value: "nomic-embed-text",
+        hint: "suspected unsupported model",
+        selected: false
+      },
+      {
+        label: "text-embedding-bge",
+        value: "text-embedding-bge",
+        hint: "suspected unsupported model",
+        selected: false
+      }
+    ]);
   });
 
   it("renders a single-choice TUI menu with the active cursor", () => {

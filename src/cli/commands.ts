@@ -1,18 +1,20 @@
 import { HelpRequested, parseCliArgs, usage, type CliOptions } from "./args.js";
 
-export type TargetId = "opencode" | "claude-code";
+export type TargetId = "opencode" | "claude-code" | "codex";
+export type ProxyAction = "run" | "up" | "down" | "status" | "token";
 
 export type CliCommand =
   | { command: "opencode"; options: CliOptions }
-  | { command: "setup"; target: TargetId; profileId?: string; port?: number; host?: string; defaultModel?: string; options: CliOptions }
-  | { command: "proxy"; profileId: string; host?: string; port?: number }
-  | { command: "config-print"; profileId: string };
+  | { command: "setup"; target?: TargetId; profileId?: string; port?: number; host?: string; defaultModel?: string; options: CliOptions }
+  | { command: "proxy"; action: ProxyAction; profileId?: string; host?: string; port?: number }
+  | { command: "config-print"; profileId: string }
+  | { command: "config-api-key"; profileId: string };
 
 export function parseCommand(argv: string[]): CliCommand {
   const [command, ...rest] = argv;
 
   if (!command || command.startsWith("--")) {
-    return { command: "opencode", options: parseCliArgs(argv) };
+    return { command: "setup", target: undefined, options: parseCliArgs(argv) };
   }
 
   if (command === "setup") {
@@ -37,14 +39,19 @@ export function parseCommand(argv: string[]): CliCommand {
 export function commandUsage(): string {
   return `${usage()}
 Commands:
-  model-provider-x setup --target <opencode|claude-code> [options]
+  model-provider-x setup --target <opencode|claude-code|codex> [options]
   model-provider-x proxy --profile <id> [--host 127.0.0.1] [--port 4141]
+  model-provider-x proxy up --profile <id> [--host 127.0.0.1] [--port 4141]
+  model-provider-x proxy down
+  model-provider-x proxy status
+  model-provider-x proxy token
   model-provider-x config print --profile <id>
+  model-provider-x config api-key --profile <id>
 `;
 }
 
 function parseSetupCommand(argv: string[]): Extract<CliCommand, { command: "setup" }> {
-  let target: TargetId = "opencode";
+  let target: TargetId | undefined;
   let profileId: string | undefined;
   let port: number | undefined;
   let host: string | undefined;
@@ -87,14 +94,20 @@ function parseSetupCommand(argv: string[]): Extract<CliCommand, { command: "setu
 }
 
 function parseProxyCommand(argv: string[]): Extract<CliCommand, { command: "proxy" }> {
+  let action: ProxyAction = "run";
+  const args = [...argv];
+  if (args[0] === "up" || args[0] === "down" || args[0] === "status" || args[0] === "token") {
+    action = args.shift() as ProxyAction;
+  }
+
   let profileId: string | undefined;
   let host: string | undefined;
   let port: number | undefined;
 
-  for (let index = 0; index < argv.length; index += 1) {
-    const arg = argv[index];
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
     const next = () => {
-      const value = argv[index + 1];
+      const value = args[index + 1];
       if (!value || value.startsWith("--")) {
         throw new Error(`${arg} requires a value`);
       }
@@ -120,16 +133,16 @@ function parseProxyCommand(argv: string[]): Extract<CliCommand, { command: "prox
     }
   }
 
-  if (!profileId) {
+  if ((action === "run" || action === "up") && !profileId) {
     throw new Error("--profile is required");
   }
 
-  return { command: "proxy", profileId, host, port };
+  return { command: "proxy", action, profileId, host, port };
 }
 
-function parseConfigCommand(argv: string[]): Extract<CliCommand, { command: "config-print" }> {
+function parseConfigCommand(argv: string[]): Extract<CliCommand, { command: "config-print" | "config-api-key" }> {
   const [subcommand, ...rest] = argv;
-  if (subcommand !== "print") {
+  if (subcommand !== "print" && subcommand !== "api-key") {
     throw new Error(`Unknown config command: ${subcommand ?? ""}`.trim());
   }
 
@@ -151,11 +164,11 @@ function parseConfigCommand(argv: string[]): Extract<CliCommand, { command: "con
     throw new Error("--profile is required");
   }
 
-  return { command: "config-print", profileId };
+  return { command: subcommand === "api-key" ? "config-api-key" : "config-print", profileId };
 }
 
 function parseTarget(value: string): TargetId {
-  if (value === "opencode" || value === "claude-code") {
+  if (value === "opencode" || value === "claude-code" || value === "codex") {
     return value;
   }
   throw new Error(`Unknown setup target: ${value}`);

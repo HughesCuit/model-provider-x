@@ -13,6 +13,22 @@ type FetchLike = (input: string, init: { headers: Record<string, string> }) => P
   json(): Promise<unknown>;
 }>;
 
+type CapabilityFetchLike = (input: string, init: RequestInit) => Promise<{
+  ok: boolean;
+  status?: number;
+  statusText?: string;
+  json?(): Promise<unknown>;
+  text?(): Promise<string>;
+}>;
+
+export type ProviderApiKind = "openai-compatible" | "openai-responses" | "anthropic-messages";
+export type TargetApiKind = "openai-compatible" | "openai-responses" | "anthropic-messages";
+
+export interface ProviderCapabilities {
+  baseURL: string;
+  apis: ProviderApiKind[];
+}
+
 export function normalizeBaseUrl(baseURL: string): string {
   const normalized = baseURL.trim().replace(/\/+$/, "");
   if (!normalized) {
@@ -50,12 +66,68 @@ export async function validateAndFetchModels(
     throw new Error("Expected /models to return an object with a data array");
   }
 
-  const models = [...new Set(body.data.map((model: { id: string }) => model.id.trim()).filter(Boolean))];
+  const models = [
+    ...new Set(
+      body.data
+        .filter(isOpenCodeCompatibleModel)
+        .map((model: { id: string }) => model.id.trim())
+        .filter(Boolean)
+    )
+  ];
   if (models.length === 0) {
-    throw new Error("Provider returned no model ids");
+    throw new Error("Provider returned no OpenCode-compatible model ids");
   }
 
   return { baseURL, models };
+}
+
+export async function detectProviderCapabilities(
+  input: ProviderValidationInput,
+  fetchImpl: CapabilityFetchLike = globalThis.fetch as CapabilityFetchLike
+): Promise<ProviderCapabilities> {
+  const baseURL = normalizeBaseUrl(input.baseURL);
+  const apiKey = input.apiKey?.trim() ?? "";
+  const headers: Record<string, string> = apiKey ? { Authorization: `Bearer ${apiKey}` } : {};
+  const apis = new Set<ProviderApiKind>();
+
+  const models = await probe(`${baseURL}/models`, { method: "GET", headers }, fetchImpl);
+  if (models.reachable) {
+    apis.add("openai-compatible");
+  }
+
+  const responses = await probe(
+    `${baseURL}/responses`,
+    { method: "POST", headers: { ...headers, "content-type": "application/json" }, body: "{}" },
+    fetchImpl
+  );
+  if (responses.reachable) {
+    apis.add("openai-responses");
+  }
+
+  const messages = await probe(
+    `${baseURL}/messages`,
+    { method: "POST", headers: { ...headers, "content-type": "application/json" }, body: "{}" },
+    fetchImpl
+  );
+  if (messages.reachable && (await isAnthropicMessagesProbe(messages.response))) {
+    apis.add("anthropic-messages");
+  }
+
+  return { baseURL, apis: [...apis] };
+}
+
+export function targetRequiredApi(target: "opencode" | "codex" | "claude-code"): TargetApiKind {
+  if (target === "codex") {
+    return "openai-responses";
+  }
+  if (target === "claude-code") {
+    return "anthropic-messages";
+  }
+  return "openai-compatible";
+}
+
+export function recommendProxyMode(capabilities: ProviderCapabilities, target: "opencode" | "codex" | "claude-code"): boolean {
+  return !capabilities.apis.includes(targetRequiredApi(target));
 }
 
 export function buildProviderConfig(input: ProviderConfigInput): OpenCodeConfigFragment {
@@ -65,7 +137,8 @@ export function buildProviderConfig(input: ProviderConfigInput): OpenCodeConfigF
     npm: "@ai-sdk/openai-compatible",
     name: input.providerName.trim(),
     options: {
-      baseURL
+      baseURL,
+      setCacheKey: true
     },
     models: Object.fromEntries(input.models.map((model) => [model, { name: model }]))
   };
@@ -82,7 +155,7 @@ export function buildProviderConfig(input: ProviderConfigInput): OpenCodeConfigF
   };
 }
 
-function isModelListResponse(body: unknown): body is { data: Array<{ id: string }> } {
+function isModelListResponse(body: unknown): body is { data: Array<{ id: string; type?: unknown }> } {
   return (
     typeof body === "object" &&
     body !== null &&
@@ -90,5 +163,74 @@ function isModelListResponse(body: unknown): body is { data: Array<{ id: string 
     (body as { data: unknown[] }).data.every(
       (model) => typeof model === "object" && model !== null && typeof (model as { id?: unknown }).id === "string"
     )
+  );
+}
+
+function isOpenCodeCompatibleModel(model: { type?: unknown }): boolean {
+  if (typeof model.type !== "string") {
+    return true;
+  }
+
+  return ["llm", "chat", "completion", "text-generation"].includes(model.type.trim().toLowerCase());
+}
+
+async function probe(
+  input: string,
+  init: RequestInit,
+  fetchImpl: CapabilityFetchLike
+): Promise<{ reachable: boolean; response?: Awaited<ReturnType<CapabilityFetchLike>> }> {
+  try {
+    const response = await fetchImpl(input, init);
+    return {
+      reachable: response.ok || response.status === 400 || response.status === 401 || response.status === 422,
+      response
+    };
+  } catch {
+    return { reachable: false };
+  }
+}
+
+async function isAnthropicMessagesProbe(response: Awaited<ReturnType<CapabilityFetchLike>> | undefined): Promise<boolean> {
+  if (!response) {
+    return false;
+  }
+
+  const status = response.status ?? (response.ok ? 200 : undefined);
+  if (status === 404 || status === undefined) {
+    return false;
+  }
+
+  if (!response.json) {
+    return !response.ok && (status === 400 || status === 401 || status === 422);
+  }
+
+  try {
+    const body = await response.json();
+    if (isAnthropicMessageResponse(body) || isAnthropicErrorResponse(body)) {
+      return true;
+    }
+    return !response.ok && (status === 400 || status === 401 || status === 422);
+  } catch {
+    return !response.ok && (status === 400 || status === 401 || status === 422);
+  }
+}
+
+function isAnthropicMessageResponse(body: unknown): boolean {
+  return (
+    typeof body === "object" &&
+    body !== null &&
+    (body as { type?: unknown }).type === "message" &&
+    typeof (body as { role?: unknown }).role === "string" &&
+    Array.isArray((body as { content?: unknown }).content)
+  );
+}
+
+function isAnthropicErrorResponse(body: unknown): boolean {
+  return (
+    typeof body === "object" &&
+    body !== null &&
+    (body as { type?: unknown }).type === "error" &&
+    typeof (body as { error?: unknown }).error === "object" &&
+    (body as { error?: unknown }).error !== null
   );
 }
