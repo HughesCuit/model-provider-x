@@ -1,6 +1,7 @@
 import type {
   OpenCodeConfigFragment,
   OpenCodeProviderConfig,
+  OpenCodeApiType,
   ProviderConfigInput,
   ProviderValidationInput,
   ProviderValidationResult
@@ -133,15 +134,19 @@ export function recommendProxyMode(capabilities: ProviderCapabilities, target: "
 export function buildProviderConfig(input: ProviderConfigInput): OpenCodeConfigFragment {
   const baseURL = normalizeBaseUrl(input.baseURL);
   const apiKey = input.apiKey?.trim();
+  const opencodeApiType = input.opencodeApiType ?? "chat";
   const provider: OpenCodeProviderConfig = {
-    npm: "@ai-sdk/openai-compatible",
+    npm: npmPackageForOpenCodeApiType(opencodeApiType),
     name: input.providerName.trim(),
     options: {
-      baseURL,
-      setCacheKey: true
+      baseURL
     },
     models: Object.fromEntries(input.models.map((model) => [model, { name: model }]))
   };
+
+  if (opencodeApiType !== "messages") {
+    provider.options.setCacheKey = true;
+  }
 
   if (apiKey) {
     provider.options.apiKey = apiKey;
@@ -153,6 +158,16 @@ export function buildProviderConfig(input: ProviderConfigInput): OpenCodeConfigF
       [input.providerId.trim()]: provider
     }
   };
+}
+
+export function npmPackageForOpenCodeApiType(apiType: OpenCodeApiType): OpenCodeProviderConfig["npm"] {
+  if (apiType === "responses") {
+    return "@ai-sdk/openai";
+  }
+  if (apiType === "messages") {
+    return "@ai-sdk/anthropic";
+  }
+  return "@ai-sdk/openai-compatible";
 }
 
 function isModelListResponse(body: unknown): body is { data: Array<{ id: string; type?: unknown }> } {

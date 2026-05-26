@@ -12,6 +12,7 @@ export interface ProviderConfigInput extends ProviderValidationInput {
   providerId: string;
   providerName: string;
   models: string[];
+  opencodeApiType?: OpenCodeApiType;
 }
 
 export interface OpenCodeModelConfig {
@@ -19,7 +20,7 @@ export interface OpenCodeModelConfig {
 }
 
 export interface OpenCodeProviderConfig {
-  npm: "@ai-sdk/openai-compatible";
+  npm: "@ai-sdk/openai-compatible" | "@ai-sdk/openai" | "@ai-sdk/anthropic";
   name: string;
   options: {
     baseURL: string;
@@ -28,6 +29,8 @@ export interface OpenCodeProviderConfig {
   };
   models: Record<string, OpenCodeModelConfig>;
 }
+
+export type OpenCodeApiType = "chat" | "responses" | "messages";
 
 export interface OpenCodeConfigFragment {
   $schema: "https://opencode.ai/config.json";

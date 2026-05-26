@@ -56,6 +56,18 @@ node dist/cli/index.js \
 OpenCode provider entries include `options.setCacheKey=true` by default.
 This lets OpenCode pass a stable cache key through the OpenAI-compatible provider path so relays or local providers that support prompt caching can route repeated context to the same cache.
 
+When targeting OpenCode, choose the direct API type interactively or pass `--opencode-api`:
+
+```bash
+node dist/cli/index.js setup --target opencode --provider lmstudio --direct --opencode-api responses
+```
+
+Supported values are:
+
+- `chat`: writes `npm: "@ai-sdk/openai-compatible"` for `/v1/chat/completions`.
+- `responses`: writes `npm: "@ai-sdk/openai"` for `/v1/responses`.
+- `messages`: writes `npm: "@ai-sdk/anthropic"` for Anthropic-compatible `/v1/messages`.
+
 ## Claude Code Setup
 
 Create or update a provider profile and write Claude Code user settings:

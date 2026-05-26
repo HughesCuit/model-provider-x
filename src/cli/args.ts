@@ -1,3 +1,5 @@
+import type { OpenCodeApiType } from "../shared/types.js";
+
 export interface CliOptions {
   apiKey?: string;
   baseURL?: string;
@@ -7,6 +9,7 @@ export interface CliOptions {
   providerId?: string;
   providerName?: string;
   providerPreset?: string;
+  opencodeApiType?: OpenCodeApiType;
   proxy?: boolean;
   yes: boolean;
 }
@@ -49,6 +52,9 @@ export function parseCliArgs(argv: string[]): CliOptions {
         break;
       case "--provider":
         options.providerPreset = next();
+        break;
+      case "--opencode-api":
+        options.opencodeApiType = parseOpenCodeApiType(next());
         break;
       case "--proxy":
         options.proxy = true;
@@ -123,6 +129,7 @@ Options:
   --name <name>        Provider display name.
   --id <id>            Provider id used under provider.<id>.
   --provider <id>      Use a built-in provider preset, for example lmstudio or openai.
+  --opencode-api <api> OpenCode API type: chat, responses, or messages.
   --proxy              Write agent config through the local compatibility proxy.
   --direct             Write agent config directly to the upstream provider.
   --models <list>      Comma-separated model ids. Skips interactive model selection.
@@ -134,6 +141,19 @@ Options:
 }
 
 export class HelpRequested extends Error {}
+
+function parseOpenCodeApiType(value: string): OpenCodeApiType {
+  if (value === "chat" || value === "chat-completions" || value === "openai-compatible") {
+    return "chat";
+  }
+  if (value === "responses" || value === "openai-responses") {
+    return "responses";
+  }
+  if (value === "messages" || value === "anthropic-messages") {
+    return "messages";
+  }
+  throw new Error(`Unknown OpenCode API type: ${value}`);
+}
 
 function addModelByOneBasedIndex(selected: Set<string>, models: string[], index: number) {
   const model = models[index - 1];

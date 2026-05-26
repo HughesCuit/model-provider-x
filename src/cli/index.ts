@@ -5,8 +5,8 @@ import { fileURLToPath } from "node:url";
 import { readProxyStatus, startProxyProcess, stopProxyProcess } from "../core/proxy-process.js";
 import { getDefaultToolConfigPath, readToolConfig, upsertProviderProfile } from "../core/tool-config.js";
 import { discoverOpenCodeConfigs, getDefaultConfigPath, writeProviderToConfig } from "../core/config.js";
-import { buildProviderConfig, detectProviderCapabilities, recommendProxyMode, validateAndFetchModels, type ProviderCapabilities } from "../core/provider.js";
-import type { DiscoveredConfig } from "../shared/types.js";
+import { buildProviderConfig, detectProviderCapabilities, recommendProxyMode, validateAndFetchModels, type ProviderApiKind, type ProviderCapabilities } from "../core/provider.js";
+import type { DiscoveredConfig, OpenCodeApiType } from "../shared/types.js";
 import { startProxyServer } from "../proxy/server.js";
 import { defaultClaudeModelMapping, getDefaultClaudeSettingsPath, writeClaudeCodeSettings, type ClaudeModelMapping } from "../targets/claude-code.js";
 import { getDefaultCodexConfigPath, writeCodexConfig } from "../targets/codex.js";
@@ -95,7 +95,8 @@ export async function runCli(options: CliOptions) {
       providerName,
       baseURL: fetched.baseURL,
       apiKey,
-      models: selectedModels
+      models: selectedModels,
+      opencodeApiType: options.opencodeApiType ?? "chat"
     });
     const provider = fragment.provider[providerId];
     const json = JSON.stringify(fragment, null, 2);
@@ -137,7 +138,7 @@ async function runSetup(command: Extract<CliCommand, { command: "setup" }>) {
     const useProxy = await resolveProxyMode(rl, command.options, capabilities, target);
 
     if (target === "opencode") {
-      await writeOpenCodeSetup(rl, command, selection, useProxy);
+      await writeOpenCodeSetup(rl, command, selection, useProxy, capabilities);
       return;
     }
 
@@ -236,16 +237,19 @@ async function writeOpenCodeSetup(
   rl: ReturnType<typeof createInterface>,
   command: Extract<CliCommand, { command: "setup" }>,
   selection: ProviderSelection,
-  useProxy: boolean
+  useProxy: boolean,
+  capabilities: ProviderCapabilities
 ) {
   const baseURL = useProxy ? `http://${selection.config.proxy.host}:${selection.config.proxy.port}/v1` : selection.upstreamBaseURL;
   const apiKey = useProxy ? selection.config.proxy.authToken : selection.apiKey;
+  const opencodeApiType = await resolveOpenCodeApiType(rl, command, capabilities, useProxy);
   const fragment = buildProviderConfig({
     providerId: selection.providerId,
     providerName: selection.providerName,
     baseURL,
     apiKey,
-    models: selection.selectedModels
+    models: selection.selectedModels,
+    opencodeApiType
   });
   const provider = fragment.provider[selection.providerId];
   const targetPath = command.options.configPath ?? (await chooseConfigPath(rl, selection.providerId, command.options.yes));
@@ -468,6 +472,94 @@ async function resolveProxyMode(
   const answer = await rl.question(prompt);
   const accepted = !answer.trim() || answer.trim().toLowerCase() === "y";
   return recommendedProxy ? accepted : !accepted;
+}
+
+async function resolveOpenCodeApiType(
+  rl: ReturnType<typeof createInterface>,
+  command: Extract<CliCommand, { command: "setup" }>,
+  capabilities: ProviderCapabilities,
+  useProxy: boolean
+): Promise<OpenCodeApiType> {
+  if (command.options.opencodeApiType) {
+    return command.options.opencodeApiType;
+  }
+
+  const availableApis = useProxy ? new Set<ProviderApiKind>(["openai-compatible", "openai-responses", "anthropic-messages"]) : new Set(capabilities.apis);
+  const recommended = recommendedOpenCodeApiType(availableApis);
+  if (command.options.yes) {
+    return recommended;
+  }
+
+  const choices: Choice<OpenCodeApiType>[] = [
+    {
+      label: "Responses API",
+      value: "responses",
+      hint: choiceHint("openai-responses", recommended, "responses", availableApis)
+    },
+    {
+      label: "Chat Completions API",
+      value: "chat",
+      hint: choiceHint("openai-compatible", recommended, "chat", availableApis)
+    },
+    {
+      label: "Anthropic Messages API",
+      value: "messages",
+      hint: choiceHint("anthropic-messages", recommended, "messages", availableApis)
+    }
+  ];
+
+  if (canUseTui()) {
+    return selectChoice("OpenCode API type", choices);
+  }
+
+  output.write("OpenCode API types:\n");
+  choices.forEach((choice, index) => {
+    output.write(`${index + 1}. ${choice.label}${choice.hint ? ` - ${choice.hint}` : ""}\n`);
+  });
+  const answer = await rl.question(`OpenCode API type [${recommended}]: `);
+  const value = answer.trim();
+  if (!value) {
+    return recommended;
+  }
+  if (value === "1" || value === "responses") {
+    return "responses";
+  }
+  if (value === "2" || value === "chat" || value === "chat-completions") {
+    return "chat";
+  }
+  if (value === "3" || value === "messages") {
+    return "messages";
+  }
+  throw new Error(`Unknown OpenCode API type: ${value}`);
+}
+
+function recommendedOpenCodeApiType(apis: Set<ProviderApiKind>): OpenCodeApiType {
+  if (apis.has("openai-responses")) {
+    return "responses";
+  }
+  if (apis.has("openai-compatible")) {
+    return "chat";
+  }
+  if (apis.has("anthropic-messages")) {
+    return "messages";
+  }
+  return "chat";
+}
+
+function choiceHint(
+  api: ProviderApiKind,
+  recommended: OpenCodeApiType,
+  value: OpenCodeApiType,
+  availableApis: Set<ProviderApiKind>
+): string {
+  const hints = [];
+  if (value === recommended) {
+    hints.push("recommended");
+  }
+  if (!availableApis.has(api)) {
+    hints.push("not detected");
+  }
+  return hints.join(", ");
 }
 
 async function resolveDefaultModel(

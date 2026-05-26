@@ -207,4 +207,40 @@ describe("provider utilities", () => {
 
     expect(config.provider.lmstudio.options.setCacheKey).toBe(true);
   });
+
+  it("generates OpenCode provider config for the Responses API", () => {
+    const config = buildProviderConfig({
+      providerId: "lmstudio",
+      providerName: "LM Studio",
+      baseURL: "http://localhost:1234/v1",
+      models: ["gemma"],
+      opencodeApiType: "responses"
+    });
+
+    expect(config.provider.lmstudio).toMatchObject({
+      npm: "@ai-sdk/openai",
+      options: {
+        baseURL: "http://localhost:1234/v1",
+        setCacheKey: true
+      }
+    });
+  });
+
+  it("generates OpenCode provider config for the Anthropic Messages API", () => {
+    const config = buildProviderConfig({
+      providerId: "lmstudio",
+      providerName: "LM Studio",
+      baseURL: "http://localhost:1234/v1",
+      models: ["gemma"],
+      opencodeApiType: "messages"
+    });
+
+    expect(config.provider.lmstudio).toMatchObject({
+      npm: "@ai-sdk/anthropic",
+      options: {
+        baseURL: "http://localhost:1234/v1"
+      }
+    });
+    expect(config.provider.lmstudio.options).not.toHaveProperty("setCacheKey");
+  });
 });

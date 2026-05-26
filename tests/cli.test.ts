@@ -35,6 +35,7 @@ describe("CLI argument parsing", () => {
       print: false,
       providerPreset: undefined,
       proxy: undefined,
+      opencodeApiType: undefined,
       providerId: "unsloth",
       providerName: "Unsloth Local",
       yes: true
@@ -42,11 +43,12 @@ describe("CLI argument parsing", () => {
   });
 
   it("supports print-only mode", () => {
-    expect(parseCliArgs(["--print", "--provider", "lmstudio", "--proxy", "--models", "qwen,gemma"])).toMatchObject({
+    expect(parseCliArgs(["--print", "--provider", "lmstudio", "--proxy", "--models", "qwen,gemma", "--opencode-api", "responses"])).toMatchObject({
       print: true,
       providerPreset: "lmstudio",
       proxy: true,
-      models: ["qwen", "gemma"]
+      models: ["qwen", "gemma"],
+      opencodeApiType: "responses"
     });
   });
 
