@@ -3,7 +3,7 @@ import { createInterface } from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 import { fileURLToPath } from "node:url";
 import { readProxyStatus, startProxyProcess, stopProxyProcess } from "../core/proxy-process.js";
-import { getDefaultToolConfigPath, readToolConfig, upsertProviderProfile } from "../core/tool-config.js";
+import { createProxyAuthToken, getDefaultToolConfigPath, readToolConfig, upsertProviderProfile, writeToolConfig } from "../core/tool-config.js";
 import { discoverOpenCodeConfigs, getDefaultConfigPath, writeProviderToConfig } from "../core/config.js";
 import { buildProviderConfig, detectProviderCapabilities, recommendProxyMode, validateAndFetchModels, type ProviderApiKind, type ProviderCapabilities } from "../core/provider.js";
 import type { DiscoveredConfig, OpenCodeApiType } from "../shared/types.js";
@@ -143,7 +143,7 @@ async function runSetup(command: Extract<CliCommand, { command: "setup" }>) {
     }
 
     if (target === "codex") {
-      await writeCodexSetup(command, selection, useProxy);
+      await writeCodexSetup(rl, command, selection, useProxy);
       return;
     }
 
@@ -240,6 +240,10 @@ async function writeOpenCodeSetup(
   useProxy: boolean,
   capabilities: ProviderCapabilities
 ) {
+  if (useProxy) {
+    await ensureProxyAuthToken(rl, command, selection);
+  }
+
   const baseURL = useProxy ? `http://${selection.config.proxy.host}:${selection.config.proxy.port}/v1` : selection.upstreamBaseURL;
   const apiKey = useProxy ? selection.config.proxy.authToken : selection.apiKey;
   const opencodeApiType = await resolveOpenCodeApiType(rl, command, capabilities, useProxy);
@@ -281,6 +285,10 @@ async function writeClaudeCodeSetup(
   selection: ProviderSelection,
   useProxy: boolean
 ) {
+  if (useProxy) {
+    await ensureProxyAuthToken(rl, command, selection);
+  }
+
   const proxyBaseURL = useProxy ? `http://${selection.config.proxy.host}:${selection.config.proxy.port}` : selection.upstreamBaseURL;
   const modelMapping = await resolveClaudeModelMapping(rl, command, selection);
   const result = await writeClaudeCodeSettings({
@@ -312,10 +320,15 @@ async function writeClaudeCodeSetup(
 }
 
 async function writeCodexSetup(
-  _command: Extract<CliCommand, { command: "setup" }>,
+  rl: ReturnType<typeof createInterface>,
+  command: Extract<CliCommand, { command: "setup" }>,
   selection: ProviderSelection,
   useProxy: boolean
 ) {
+  if (useProxy) {
+    await ensureProxyAuthToken(rl, command, selection);
+  }
+
   const proxyBaseURL = useProxy
     ? `http://${selection.config.proxy.host}:${selection.config.proxy.port}/v1`
     : selection.upstreamBaseURL;
@@ -401,6 +414,63 @@ async function runProxyCommand(command: Extract<CliCommand, { command: "proxy" }
     process.once("SIGINT", stop);
     process.once("SIGTERM", stop);
   });
+}
+
+async function ensureProxyAuthToken(
+  rl: ReturnType<typeof createInterface> | undefined,
+  command: Extract<CliCommand, { command: "setup" }>,
+  selection: ProviderSelection
+): Promise<void> {
+  if (command.options.yes || !rl) {
+    return;
+  }
+
+  const current = selection.config.proxy.authToken;
+  const action = canUseTui()
+    ? await selectChoice("Proxy token", [
+        { label: "Use existing proxy token", value: "use", hint: tokenHint(current) },
+        { label: "Generate a new proxy token", value: "generate" },
+        { label: "Enter a proxy token", value: "input" }
+      ])
+    : await promptProxyTokenAction(rl, current);
+
+  if (action === "use") {
+    return;
+  }
+
+  const nextToken =
+    action === "generate"
+      ? createProxyAuthToken()
+      : await requiredOption(rl, undefined, "Proxy token");
+
+  selection.config.proxy.authToken = nextToken;
+  await writeToolConfig(selection.toolConfigPath, selection.config);
+}
+
+async function promptProxyTokenAction(
+  rl: ReturnType<typeof createInterface>,
+  current: string
+): Promise<"use" | "generate" | "input"> {
+  output.write(`Proxy token found (${tokenHint(current)}).\n`);
+  const answer = await rl.question("Use existing, generate new, or enter your own? [use/generate/input] ");
+  const value = answer.trim().toLowerCase();
+  if (!value || value === "use" || value === "u") {
+    return "use";
+  }
+  if (value === "generate" || value === "g") {
+    return "generate";
+  }
+  if (value === "input" || value === "i" || value === "byok") {
+    return "input";
+  }
+  throw new Error(`Unknown proxy token action: ${answer}`);
+}
+
+function tokenHint(token: string): string {
+  if (token.length <= 10) {
+    return token;
+  }
+  return `${token.slice(0, 8)}...${token.slice(-4)}`;
 }
 
 async function requiredOption(

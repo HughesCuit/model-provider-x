@@ -125,6 +125,9 @@ Proxy mode gives the broadest compatibility:
 - `/v1/chat/completions` and `/v1/completions` passthrough for OpenAI-compatible clients.
 - `/v1/messages` for Claude Code.
 
+When proxy mode is selected interactively, the wizard confirms whether to reuse the current proxy token, generate a new one, or enter your own.
+Non-interactive `--yes` runs keep the existing token or use the generated default.
+
 You can force either mode non-interactively:
 
 ```bash

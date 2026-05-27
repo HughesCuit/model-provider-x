@@ -52,9 +52,13 @@ function createDefaultToolConfig(): ToolConfig {
     proxy: {
       host: "127.0.0.1",
       port: 4141,
-      authToken: `mpx-${randomBytes(18).toString("base64url")}`
+      authToken: createProxyAuthToken()
     }
   };
+}
+
+export function createProxyAuthToken(): string {
+  return `mpx-${randomBytes(18).toString("base64url")}`;
 }
 
 function normalizeToolConfig(config: Partial<ToolConfig>): ToolConfig {

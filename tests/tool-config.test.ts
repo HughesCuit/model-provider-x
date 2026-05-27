@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { afterEach, describe, expect, it } from "vitest";
 import {
+  createProxyAuthToken,
   getDefaultToolConfigPath,
   readToolConfig,
   upsertProviderProfile,
@@ -26,6 +27,11 @@ describe("tool config", () => {
     const home = await tempDir();
 
     expect(getDefaultToolConfigPath(home)).toBe(join(home, ".config", "model-provider-x", "config.jsonc"));
+  });
+
+  it("generates proxy auth tokens with the expected prefix", () => {
+    expect(createProxyAuthToken()).toMatch(/^mpx-[A-Za-z0-9_-]+$/);
+    expect(createProxyAuthToken()).not.toBe(createProxyAuthToken());
   });
 
   it("writes and reads provider profiles", async () => {
