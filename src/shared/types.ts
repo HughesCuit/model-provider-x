@@ -3,20 +3,38 @@ export interface ProviderValidationInput {
   apiKey?: string;
 }
 
+export interface ModelModalities {
+  input?: ("text" | "audio" | "image" | "video" | "pdf")[];
+  output?: ("text" | "audio" | "image" | "video" | "pdf")[];
+}
+
+export interface ModelInfo {
+  id: string;
+  modalities?: ModelModalities;
+}
+
 export interface ProviderValidationResult {
   baseURL: string;
   models: string[];
+  modelDetails: ModelInfo[];
 }
 
 export interface ProviderConfigInput extends ProviderValidationInput {
   providerId: string;
   providerName: string;
   models: string[];
+  modelDetails?: ModelInfo[];
   opencodeApiType?: OpenCodeApiType;
 }
 
 export interface OpenCodeModelConfig {
   name: string;
+  modalities?: ModelModalities;
+  attachment?: boolean;
+  reasoning?: boolean;
+  tool_call?: boolean;
+  temperature?: boolean;
+  limit?: { context?: number; input?: number; output: number };
 }
 
 export interface OpenCodeProviderConfig {

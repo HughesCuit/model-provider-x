@@ -4,8 +4,11 @@ import type {
   OpenCodeApiType,
   ProviderConfigInput,
   ProviderValidationInput,
-  ProviderValidationResult
+  ProviderValidationResult,
+  ModelInfo,
+  ModelModalities
 } from "../shared/types.js";
+import { lookupModelCapabilities, parseCapabilitiesFromApi, mergeModelCapabilities } from "./model-capabilities.js";
 
 type FetchLike = (input: string, init: { headers: Record<string, string> }) => Promise<{
   ok: boolean;
@@ -67,11 +70,11 @@ export async function validateAndFetchModels(
     throw new Error("Expected /models to return an object with a data array");
   }
 
+  const compatibleModels = body.data.filter(isOpenCodeCompatibleModel);
   const models = [
     ...new Set(
-      body.data
-        .filter(isOpenCodeCompatibleModel)
-        .map((model: { id: string }) => model.id.trim())
+      compatibleModels
+        .map((model) => model.id.trim())
         .filter(Boolean)
     )
   ];
@@ -79,7 +82,17 @@ export async function validateAndFetchModels(
     throw new Error("Provider returned no OpenCode-compatible model ids");
   }
 
-  return { baseURL, models };
+  const modelDetails: ModelInfo[] = models.map((modelId) => {
+    const rawModel = compatibleModels.find((m) => m.id.trim() === modelId);
+    const apiCapabilities = rawModel ? parseCapabilitiesFromApi(rawModel as { modalities?: unknown; capabilities?: unknown }) : undefined;
+    const mergedCapabilities = mergeModelCapabilities(modelId, apiCapabilities);
+    return {
+      id: modelId,
+      modalities: mergedCapabilities
+    };
+  });
+
+  return { baseURL, models, modelDetails };
 }
 
 export async function detectProviderCapabilities(
@@ -141,7 +154,12 @@ export function buildProviderConfig(input: ProviderConfigInput): OpenCodeConfigF
     options: {
       baseURL
     },
-    models: Object.fromEntries(input.models.map((model) => [model, { name: model }]))
+    models: Object.fromEntries(
+      input.models.map((model) => {
+        const modelInfo = input.modelDetails?.find((m) => m.id === model);
+        return [model, buildModelConfig(model, modelInfo)];
+      })
+    )
   };
 
   if (opencodeApiType !== "messages") {
@@ -160,6 +178,14 @@ export function buildProviderConfig(input: ProviderConfigInput): OpenCodeConfigF
   };
 }
 
+function buildModelConfig(modelId: string, modelInfo?: ModelInfo): import("../shared/types.js").OpenCodeModelConfig {
+  const config: import("../shared/types.js").OpenCodeModelConfig = { name: modelId };
+  if (modelInfo?.modalities) {
+    config.modalities = modelInfo.modalities;
+  }
+  return config;
+}
+
 export function npmPackageForOpenCodeApiType(apiType: OpenCodeApiType): OpenCodeProviderConfig["npm"] {
   if (apiType === "responses") {
     return "@ai-sdk/openai";
@@ -170,7 +196,7 @@ export function npmPackageForOpenCodeApiType(apiType: OpenCodeApiType): OpenCode
   return "@ai-sdk/openai-compatible";
 }
 
-function isModelListResponse(body: unknown): body is { data: Array<{ id: string; type?: unknown }> } {
+function isModelListResponse(body: unknown): body is { data: Array<{ id: string; type?: unknown; modalities?: unknown; capabilities?: unknown }> } {
   return (
     typeof body === "object" &&
     body !== null &&

@@ -1,10 +1,16 @@
-import type { OpenCodeApiType } from "../shared/types.js";
+import type { OpenCodeApiType, ModelModalities } from "../shared/types.js";
+
+export interface ModelModalityOverride {
+  modelId: string;
+  modalities: ModelModalities;
+}
 
 export interface CliOptions {
   apiKey?: string;
   baseURL?: string;
   configPath?: string;
   models?: string[];
+  modalities?: ModelModalityOverride[];
   print: boolean;
   providerId?: string;
   providerName?: string;
@@ -46,6 +52,12 @@ export function parseCliArgs(argv: string[]): CliOptions {
           .split(",")
           .map((model) => model.trim())
           .filter(Boolean);
+        break;
+      case "--modalities":
+        if (!options.modalities) {
+          options.modalities = [];
+        }
+        options.modalities.push(parseModalitiesArg(next()));
         break;
       case "--name":
         options.providerName = next();
@@ -133,6 +145,8 @@ Options:
   --proxy              Write agent config through the local compatibility proxy.
   --direct             Write agent config directly to the upstream provider.
   --models <list>      Comma-separated model ids. Skips interactive model selection.
+  --modalities <spec>  Model modalities in format <model>:<input>:<output>.
+                       Example: --modalities qwen-vl:image,text:text
   --config <path>      OpenCode config path to write when targeting OpenCode.
   --print              Print generated JSON and do not write config.
   --yes, -y            Accept defaults in non-interactive prompts.
@@ -161,4 +175,34 @@ function addModelByOneBasedIndex(selected: Set<string>, models: string[], index:
     throw new Error(`Model index out of range: ${index}`);
   }
   selected.add(model);
+}
+
+function parseModalitiesArg(value: string): ModelModalityOverride {
+  const parts = value.split(":");
+  if (parts.length !== 3) {
+    throw new Error(`Invalid --modalities format: ${value}. Expected <model>:<input>:<output>`);
+  }
+
+  const [modelId, inputStr, outputStr] = parts;
+  if (!modelId) {
+    throw new Error("Model id is required in --modalities");
+  }
+
+  const parseModalityList = (s: string): ("text" | "image" | "audio" | "video" | "pdf")[] => {
+    return s.split(",").map((m) => {
+      const trimmed = m.trim().toLowerCase();
+      if (["text", "image", "audio", "video", "pdf"].includes(trimmed)) {
+        return trimmed as "text" | "image" | "audio" | "video" | "pdf";
+      }
+      throw new Error(`Unknown modality: ${trimmed}`);
+    });
+  };
+
+  return {
+    modelId,
+    modalities: {
+      input: parseModalityList(inputStr),
+      output: parseModalityList(outputStr),
+    },
+  };
 }

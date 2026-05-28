@@ -24,7 +24,11 @@ describe("provider utilities", () => {
     );
 
     expect(fetchImpl).toHaveBeenCalledWith("http://localhost:8888/v1/models", { headers: {} });
-    expect(result).toEqual({ baseURL: "http://localhost:8888/v1", models: ["qwen3.6-35b", "gemma-4-e2b"] });
+    expect(result.baseURL).toBe("http://localhost:8888/v1");
+    expect(result.models).toEqual(["qwen3.6-35b", "gemma-4-e2b"]);
+    expect(result.modelDetails).toHaveLength(2);
+    expect(result.modelDetails[0].id).toBe("qwen3.6-35b");
+    expect(result.modelDetails[1].id).toBe("gemma-4-e2b");
   });
 
   it("filters typed embedding models from discovery", async () => {
@@ -242,5 +246,43 @@ describe("provider utilities", () => {
       }
     });
     expect(config.provider.lmstudio.options).not.toHaveProperty("setCacheKey");
+  });
+
+  it("includes modalities in model config when provided", () => {
+    const config = buildProviderConfig({
+      providerId: "lmstudio",
+      providerName: "LM Studio",
+      baseURL: "http://localhost:1234/v1",
+      models: ["gpt-4o", "text-only-model"],
+      modelDetails: [
+        { id: "gpt-4o", modalities: { input: ["text", "image"], output: ["text"] } },
+        { id: "text-only-model" }
+      ]
+    });
+
+    expect(config.provider.lmstudio.models["gpt-4o"]).toEqual({
+      name: "gpt-4o",
+      modalities: { input: ["text", "image"], output: ["text"] }
+    });
+    expect(config.provider.lmstudio.models["text-only-model"]).toEqual({
+      name: "text-only-model"
+    });
+  });
+
+  it("generates model config with modalities from known models", () => {
+    const config = buildProviderConfig({
+      providerId: "unsloth",
+      providerName: "Unsloth Local",
+      baseURL: "http://localhost:8888/v1",
+      models: ["qwen2.5-vl-72b-instruct"],
+      modelDetails: [
+        { id: "qwen2.5-vl-72b-instruct", modalities: { input: ["text", "image"], output: ["text"] } }
+      ]
+    });
+
+    expect(config.provider.unsloth.models["qwen2.5-vl-72b-instruct"]).toEqual({
+      name: "qwen2.5-vl-72b-instruct",
+      modalities: { input: ["text", "image"], output: ["text"] }
+    });
   });
 });

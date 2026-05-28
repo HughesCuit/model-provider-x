@@ -1,6 +1,6 @@
 {
   "name": "@heventure/model-provider-x",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "TUI configurator and local API proxy for wiring custom model providers into OpenCode and Claude Code.",
   "private": false,
   "license": "MIT",

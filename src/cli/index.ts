@@ -6,7 +6,8 @@ import { readProxyStatus, startProxyProcess, stopProxyProcess } from "../core/pr
 import { createProxyAuthToken, getDefaultToolConfigPath, readToolConfig, upsertProviderProfile, writeToolConfig } from "../core/tool-config.js";
 import { discoverOpenCodeConfigs, getDefaultConfigPath, writeProviderToConfig } from "../core/config.js";
 import { buildProviderConfig, detectProviderCapabilities, recommendProxyMode, validateAndFetchModels, type ProviderApiKind, type ProviderCapabilities } from "../core/provider.js";
-import type { DiscoveredConfig, OpenCodeApiType } from "../shared/types.js";
+import type { DiscoveredConfig, OpenCodeApiType, ModelInfo, ModelModalities } from "../shared/types.js";
+import { isKnownModel } from "../core/model-capabilities.js";
 import { startProxyServer } from "../proxy/server.js";
 import { defaultClaudeModelMapping, getDefaultClaudeSettingsPath, writeClaudeCodeSettings, type ClaudeModelMapping } from "../targets/claude-code.js";
 import { getDefaultCodexConfigPath, writeCodexConfig } from "../targets/codex.js";
@@ -90,12 +91,14 @@ export async function runCli(options: CliOptions) {
           )
         : parseModelSelection(await rl.question(formatModelPrompt(fetched.models)), fetched.models));
 
+    const modelDetails = fetched.modelDetails.filter((m) => selectedModels.includes(m.id));
     const fragment = buildProviderConfig({
       providerId,
       providerName,
       baseURL: fetched.baseURL,
       apiKey,
       models: selectedModels,
+      modelDetails,
       opencodeApiType: options.opencodeApiType ?? "chat"
     });
     const provider = fragment.provider[providerId];
@@ -159,6 +162,7 @@ interface ProviderSelection {
   upstreamBaseURL: string;
   apiKey: string;
   selectedModels: string[];
+  modelDetails: ModelInfo[];
   defaultModel: string;
   config: Awaited<ReturnType<typeof upsertProviderProfile>>;
   toolConfigPath: string;
@@ -205,6 +209,8 @@ async function collectProviderSelection(
     throw new Error("Select at least one model");
   }
 
+  const modelDetails = await resolveModelModalities(rl, command, selectedModels, fetched.modelDetails);
+
   const toolConfigPath = getDefaultToolConfigPath();
   const config = await upsertProviderProfile(
     toolConfigPath,
@@ -227,6 +233,7 @@ async function collectProviderSelection(
     upstreamBaseURL: fetched.baseURL,
     apiKey: providerInput.apiKey,
     selectedModels,
+    modelDetails,
     defaultModel,
     config,
     toolConfigPath
@@ -253,6 +260,7 @@ async function writeOpenCodeSetup(
     baseURL,
     apiKey,
     models: selection.selectedModels,
+    modelDetails: selection.modelDetails,
     opencodeApiType
   });
   const provider = fragment.provider[selection.providerId];
@@ -833,6 +841,95 @@ function slugify(value: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
+}
+
+async function resolveModelModalities(
+  rl: ReturnType<typeof createInterface>,
+  command: Extract<CliCommand, { command: "setup" }>,
+  selectedModels: string[],
+  fetchedModelDetails: ModelInfo[]
+): Promise<ModelInfo[]> {
+  const userModalityOverrides = new Map<string, ModelModalities>();
+  if (command.options.modalities) {
+    for (const override of command.options.modalities) {
+      userModalityOverrides.set(override.modelId, override.modalities);
+    }
+  }
+
+  const result: ModelInfo[] = [];
+  for (const modelId of selectedModels) {
+    const fetched = fetchedModelDetails.find((m) => m.id === modelId);
+    const userOverride = userModalityOverrides.get(modelId);
+
+    if (userOverride) {
+      result.push({ id: modelId, modalities: userOverride });
+      continue;
+    }
+
+    if (fetched?.modalities) {
+      result.push(fetched);
+      continue;
+    }
+
+    if (command.options.yes || isKnownModel(modelId)) {
+      result.push(fetched ?? { id: modelId });
+      continue;
+    }
+
+    const modalities = await promptModelModalities(rl, modelId);
+    result.push({ id: modelId, modalities });
+  }
+
+  return result;
+}
+
+async function promptModelModalities(
+  rl: ReturnType<typeof createInterface>,
+  modelId: string
+): Promise<ModelModalities> {
+  output.write(`\nModel: ${modelId} - Capabilities unknown\n`);
+
+  if (canUseTui()) {
+    const inputModalities = await multiSelectChoices("Input modalities", [
+      { label: "text", value: "text", hint: "default" },
+      { label: "image", value: "image" },
+      { label: "audio", value: "audio" },
+      { label: "video", value: "video" },
+      { label: "pdf", value: "pdf" },
+    ]);
+    const outputModalities = await multiSelectChoices("Output modalities", [
+      { label: "text", value: "text", hint: "default" },
+      { label: "image", value: "image" },
+      { label: "audio", value: "audio" },
+      { label: "video", value: "video" },
+      { label: "pdf", value: "pdf" },
+    ]);
+    return {
+      input: inputModalities as ModelModalities["input"],
+      output: outputModalities as ModelModalities["output"],
+    };
+  }
+
+  const inputAnswer = await rl.question("Input modalities [text]: ");
+  const outputAnswer = await rl.question("Output modalities [text]: ");
+
+  const parseModalityList = (answer: string): ("text" | "image" | "audio" | "video" | "pdf")[] => {
+    if (!answer.trim()) {
+      return ["text"];
+    }
+    return answer.split(",").map((m) => {
+      const trimmed = m.trim().toLowerCase();
+      if (["text", "image", "audio", "video", "pdf"].includes(trimmed)) {
+        return trimmed as "text" | "image" | "audio" | "video" | "pdf";
+      }
+      throw new Error(`Unknown modality: ${trimmed}`);
+    });
+  };
+
+  return {
+    input: parseModalityList(inputAnswer),
+    output: parseModalityList(outputAnswer),
+  };
 }
 
 void main();
