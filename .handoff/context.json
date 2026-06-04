@@ -1,0 +1,54 @@
+{
+  "version": "1.1.0",
+  "savedAt": "2026-06-04T00:00:00+08:00",
+  "project": {
+    "name": "@heventure/model-provider-x",
+    "language": "TypeScript",
+    "packageVersion": "0.2.4"
+  },
+  "git": {
+    "branch": "main",
+    "workingTree": "clean",
+    "recentCommits": [
+      {
+        "hash": "305a4fe",
+        "message": "feat: add model modalities support for OpenCode config"
+      },
+      {
+        "hash": "759623c",
+        "message": "Release model-provider-x 0.2.3"
+      },
+      {
+        "hash": "ed76fde",
+        "message": "Release model-provider-x 0.2.2"
+      },
+      {
+        "hash": "5918367",
+        "message": "Fix npm trusted publishing workflow"
+      },
+      {
+        "hash": "e7ef985",
+        "message": "Release model-provider-x 0.2.1"
+      }
+    ]
+  },
+  "commands": {
+    "test": "npm test",
+    "build": "npm run build",
+    "publish": "git tag vX.Y.Z && git push origin main && git push origin vX.Y.Z"
+  },
+  "capabilities": {
+    "targets": ["opencode", "codex", "claude-code"],
+    "proxyEndpoints": [
+      "/v1/responses",
+      "/v1/messages",
+      "/v1/chat/completions",
+      "/v1/completions"
+    ],
+    "opencodeApiTypes": ["chat", "responses", "messages"]
+  },
+  "secrets": {
+    "status": "filtered",
+    "notes": "No API keys or tokens saved in handoff."
+  }
+}
