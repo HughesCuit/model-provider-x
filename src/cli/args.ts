@@ -10,6 +10,7 @@ export interface CliOptions {
   baseURL?: string;
   configPath?: string;
   models?: string[];
+  modelRegistryPaths?: string[];
   modalities?: ModelModalityOverride[];
   print: boolean;
   providerId?: string;
@@ -52,6 +53,12 @@ export function parseCliArgs(argv: string[]): CliOptions {
           .split(",")
           .map((model) => model.trim())
           .filter(Boolean);
+        break;
+      case "--model-registry":
+        if (!options.modelRegistryPaths) {
+          options.modelRegistryPaths = [];
+        }
+        options.modelRegistryPaths.push(next());
         break;
       case "--modalities":
         if (!options.modalities) {
@@ -145,6 +152,8 @@ Options:
   --proxy              Write agent config through the local compatibility proxy.
   --direct             Write agent config directly to the upstream provider.
   --models <list>      Comma-separated model ids. Skips interactive model selection.
+  --model-registry <path>
+                       JSONC model metadata override. Can be repeated.
   --modalities <spec>  Model modalities in format <model>:<input>:<output>.
                        Example: --modalities qwen-vl:image,text:text
   --config <path>      OpenCode config path to write when targeting OpenCode.

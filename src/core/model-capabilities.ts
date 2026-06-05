@@ -138,11 +138,14 @@ export function parseCapabilitiesFromApi(model: {
   if (model.capabilities && typeof model.capabilities === "object") {
     const caps = model.capabilities as Record<string, unknown>;
     const input: string[] = ["text"];
-    if (caps.vision || caps.image || caps.multimodal) {
+    if (caps.vision || caps.image || caps.multimodal || caps.image_input) {
       input.push("image");
     }
     if (caps.audio || caps.speech) {
       input.push("audio");
+    }
+    if (caps.video) {
+      input.push("video");
     }
     if (input.length > 1) {
       return { input: input as ModelModalities["input"], output: ["text"] };

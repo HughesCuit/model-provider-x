@@ -52,6 +52,12 @@ describe("CLI argument parsing", () => {
     });
   });
 
+  it("parses local model registry paths", () => {
+    expect(parseCliArgs(["--model-registry", "model-provider-x.models.jsonc"])).toMatchObject({
+      modelRegistryPaths: ["model-provider-x.models.jsonc"]
+    });
+  });
+
   it("exposes common provider presets before custom", () => {
     expect(getProviderPreset("lmstudio")).toMatchObject({
       id: "lmstudio",
@@ -140,6 +146,52 @@ describe("CLI argument parsing", () => {
         selected: false
       }
     ]);
+  });
+
+  it("shows enriched model metadata as selection hints", () => {
+    const choices = createModelChoices([
+      {
+        id: "qwen2.5-vl-7b-instruct",
+        type: "llm",
+        architecture: "qwen2vl",
+        quantization: "Q4_K_M",
+        contextLength: 32768,
+        modalities: { input: ["text", "image"], output: ["text"] },
+        capabilities: { toolCall: true }
+      },
+      {
+        id: "nomic-embed-text",
+        type: "embedding"
+      }
+    ]);
+
+    expect(choices).toEqual([
+      {
+        label: "qwen2.5-vl-7b-instruct",
+        value: "qwen2.5-vl-7b-instruct",
+        hint: "llm, qwen2vl, Q4_K_M, 32k ctx, vision, tools",
+        selected: true
+      },
+      {
+        label: "nomic-embed-text",
+        value: "nomic-embed-text",
+        hint: "embedding, suspected unsupported model",
+        selected: false
+      }
+    ]);
+  });
+
+  it("renders modality prompts with the current model in the title", () => {
+    const frame = stripAnsi(
+      renderMultiSelect(
+        "Input modalities: qwen2.5-vl-7b-instruct",
+        [{ label: "text", value: "text" }],
+        0,
+        new Set([0])
+      )
+    );
+
+    expect(frame).toContain("Input modalities: qwen2.5-vl-7b-instruct");
   });
 
   it("renders a single-choice TUI menu with the active cursor", () => {

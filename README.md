@@ -135,6 +135,51 @@ node dist/cli/index.js setup --target codex --provider lmstudio --proxy
 node dist/cli/index.js setup --target opencode --provider lmstudio --direct
 ```
 
+## Model Metadata Registry
+
+Some OpenAI-compatible providers only return minimal `/v1/models` entries with `id`, `object`, and `owned_by`.
+For those providers, `model-provider-x` can enrich model capabilities from registries.
+
+The merge order is:
+
+1. User overrides such as `--modalities`.
+2. Provider or native runtime metadata.
+3. Project-local registry overrides.
+4. Built-in models.dev-shaped metadata.
+5. Conservative model-name heuristics.
+
+By default, the CLI reads `model-provider-x.models.jsonc` from the current working directory when it exists.
+You can also pass one or more registry files explicitly:
+
+```bash
+node dist/cli/index.js setup \
+  --provider custom \
+  --model-registry ./model-provider-x.models.jsonc
+```
+
+Example registry:
+
+```jsonc
+{
+  "providers": {
+    "mimo-pool": {
+      "models": {
+        "mimo-v2.5-tts": {
+          "type": "tts",
+          "modalities": {
+            "input": ["text"],
+            "output": ["audio"]
+          },
+          "limit": {
+            "context": 8192
+          }
+        }
+      }
+    }
+  }
+}
+```
+
 ## Commands
 
 ```bash

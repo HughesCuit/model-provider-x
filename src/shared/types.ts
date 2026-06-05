@@ -1,6 +1,9 @@
 export interface ProviderValidationInput {
   baseURL: string;
   apiKey?: string;
+  providerId?: string;
+  registries?: ModelRegistry[];
+  modelRegistryPaths?: string[];
 }
 
 export interface ModelModalities {
@@ -10,8 +13,34 @@ export interface ModelModalities {
 
 export interface ModelInfo {
   id: string;
+  type?: string;
+  architecture?: string;
+  quantization?: string;
+  parameterSize?: string;
+  state?: string;
+  contextLength?: number;
   modalities?: ModelModalities;
+  capabilities?: {
+    toolCall?: boolean;
+    reasoning?: boolean;
+  };
+  metadataSources?: string[];
 }
+
+export interface ModelRegistry {
+  source: string;
+  providers?: Record<string, { models?: Record<string, ModelRegistryModel> }>;
+  models?: Record<string, ModelRegistryModel>;
+}
+
+export type ModelRegistryModel = Omit<ModelInfo, "id" | "metadataSources"> & {
+  id?: string;
+  limit?: { context?: number; input?: number; output?: number };
+  input_modalities?: ModelModalities["input"];
+  output_modalities?: ModelModalities["output"];
+  tool_call?: boolean;
+  reasoning?: boolean;
+};
 
 export interface ProviderValidationResult {
   baseURL: string;
@@ -34,7 +63,7 @@ export interface OpenCodeModelConfig {
   reasoning?: boolean;
   tool_call?: boolean;
   temperature?: boolean;
-  limit?: { context?: number; input?: number; output: number };
+  limit?: { context?: number; input?: number; output?: number };
 }
 
 export interface OpenCodeProviderConfig {

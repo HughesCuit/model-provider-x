@@ -1,11 +1,13 @@
 #!/usr/bin/env node
 import { createInterface } from "node:readline/promises";
+import { existsSync } from "node:fs";
 import { stdin as input, stdout as output } from "node:process";
 import { fileURLToPath } from "node:url";
 import { readProxyStatus, startProxyProcess, stopProxyProcess } from "../core/proxy-process.js";
 import { createProxyAuthToken, getDefaultToolConfigPath, readToolConfig, upsertProviderProfile, writeToolConfig } from "../core/tool-config.js";
 import { discoverOpenCodeConfigs, getDefaultConfigPath, writeProviderToConfig } from "../core/config.js";
 import { buildProviderConfig, detectProviderCapabilities, recommendProxyMode, validateAndFetchModels, type ProviderApiKind, type ProviderCapabilities } from "../core/provider.js";
+import { DEFAULT_MODEL_REGISTRY_FILE } from "../core/model-registry.js";
 import type { DiscoveredConfig, OpenCodeApiType, ModelInfo, ModelModalities } from "../shared/types.js";
 import { isKnownModel } from "../core/model-capabilities.js";
 import { startProxyServer } from "../proxy/server.js";
@@ -81,17 +83,25 @@ export async function runCli(options: CliOptions) {
     const apiKey = await resolveApiKey(rl, options.apiKey, providerDefaults.preset);
 
     output.write("Fetching models...\n");
-    const fetched = await validateAndFetchModels({ baseURL, apiKey });
+    const fetched = await validateAndFetchModels({
+      baseURL,
+      apiKey,
+      providerId,
+      modelRegistryPaths: resolveModelRegistryPaths(options)
+    });
     const selectedModels =
       options.models ??
       (canUseTui()
         ? await multiSelectChoices(
             "Select models",
-            createModelChoices(fetched.models)
+            createModelChoices(fetched.modelDetails)
           )
         : parseModelSelection(await rl.question(formatModelPrompt(fetched.models)), fetched.models));
 
-    const modelDetails = fetched.modelDetails.filter((m) => selectedModels.includes(m.id));
+    const modelDetails = applyModelModalityOverrides(
+      fetched.modelDetails.filter((m) => selectedModels.includes(m.id)),
+      options
+    );
     const fragment = buildProviderConfig({
       providerId,
       providerName,
@@ -198,11 +208,16 @@ async function collectProviderSelection(
   providerInput: ProviderInput
 ): Promise<ProviderSelection> {
   output.write("Fetching models...\n");
-  const fetched = await validateAndFetchModels({ baseURL: providerInput.baseURL, apiKey: providerInput.apiKey });
+  const fetched = await validateAndFetchModels({
+    baseURL: providerInput.baseURL,
+    apiKey: providerInput.apiKey,
+    providerId: providerInput.providerId,
+    modelRegistryPaths: resolveModelRegistryPaths(command.options)
+  });
   const selectedModels =
     command.options.models ??
     (canUseTui()
-      ? await multiSelectChoices("Select models", createModelChoices(fetched.models))
+      ? await multiSelectChoices("Select models", createModelChoices(fetched.modelDetails))
       : parseModelSelection(await rl.question(formatModelPrompt(fetched.models)), fetched.models));
   const defaultModel = await resolveDefaultModel(rl, command, selectedModels);
   if (!defaultModel) {
@@ -479,6 +494,33 @@ function tokenHint(token: string): string {
     return token;
   }
   return `${token.slice(0, 8)}...${token.slice(-4)}`;
+}
+
+function resolveModelRegistryPaths(options: CliOptions): string[] {
+  const paths = [...(options.modelRegistryPaths ?? [])];
+  if (existsSync(DEFAULT_MODEL_REGISTRY_FILE) && !paths.includes(DEFAULT_MODEL_REGISTRY_FILE)) {
+    paths.push(DEFAULT_MODEL_REGISTRY_FILE);
+  }
+  return paths;
+}
+
+function applyModelModalityOverrides(modelDetails: ModelInfo[], options: CliOptions): ModelInfo[] {
+  if (!options.modalities?.length) {
+    return modelDetails;
+  }
+
+  const overrides = new Map(options.modalities.map((override) => [override.modelId, override.modalities]));
+  return modelDetails.map((model) => {
+    const modalities = overrides.get(model.id);
+    if (!modalities) {
+      return model;
+    }
+    return {
+      ...model,
+      modalities,
+      metadataSources: [...new Set([...(model.metadataSources ?? []), "user"])]
+    };
+  });
 }
 
 async function requiredOption(
@@ -890,14 +932,14 @@ async function promptModelModalities(
   output.write(`\nModel: ${modelId} - Capabilities unknown\n`);
 
   if (canUseTui()) {
-    const inputModalities = await multiSelectChoices("Input modalities", [
+    const inputModalities = await multiSelectChoices(`Input modalities: ${modelId}`, [
       { label: "text", value: "text", hint: "default" },
       { label: "image", value: "image" },
       { label: "audio", value: "audio" },
       { label: "video", value: "video" },
       { label: "pdf", value: "pdf" },
     ]);
-    const outputModalities = await multiSelectChoices("Output modalities", [
+    const outputModalities = await multiSelectChoices(`Output modalities: ${modelId}`, [
       { label: "text", value: "text", hint: "default" },
       { label: "image", value: "image" },
       { label: "audio", value: "audio" },
