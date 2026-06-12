@@ -1,54 +1,128 @@
 {
   "version": "1.1.0",
-  "savedAt": "2026-06-04T00:00:00+08:00",
+  "savedAt": "2026-06-12T10:00:00+08:00",
   "project": {
     "name": "@heventure/model-provider-x",
     "language": "TypeScript",
-    "packageVersion": "0.2.4"
+    "packageVersion": "0.2.6-beta.0"
   },
   "git": {
     "branch": "main",
-    "workingTree": "clean",
+    "tracking": "origin/main",
+    "head": {
+      "hash": "fa1031c",
+      "message": "Release model-provider-x 0.2.6-beta.0",
+      "tag": "v0.2.6-beta.0"
+    },
+    "workingTree": "clean-code-with-untracked-handoff-docs",
+    "untrackedFiles": [
+      ".handoff.config.json",
+      ".handoff/",
+      "docs/"
+    ],
     "recentCommits": [
+      {
+        "hash": "fa1031c",
+        "message": "Release model-provider-x 0.2.6-beta.0"
+      },
+      {
+        "hash": "9ade425",
+        "message": "Release model-provider-x 0.2.5"
+      },
+      {
+        "hash": "a5e7f45",
+        "message": "feat: integrate models.dev registry for model capability detection"
+      },
+      {
+        "hash": "bbb2d1a",
+        "message": "feat: enrich model metadata registry"
+      },
       {
         "hash": "305a4fe",
         "message": "feat: add model modalities support for OpenCode config"
-      },
-      {
-        "hash": "759623c",
-        "message": "Release model-provider-x 0.2.3"
-      },
-      {
-        "hash": "ed76fde",
-        "message": "Release model-provider-x 0.2.2"
-      },
-      {
-        "hash": "5918367",
-        "message": "Fix npm trusted publishing workflow"
-      },
-      {
-        "hash": "e7ef985",
-        "message": "Release model-provider-x 0.2.1"
       }
     ]
   },
+  "release": {
+    "status": "published",
+    "versions": {
+      "latest": "0.2.5",
+      "next": "0.2.6-beta.0"
+    },
+    "npmDistTags": {
+      "latest": "0.2.5",
+      "next": "0.2.6-beta.0"
+    }
+  },
   "commands": {
-    "test": "npm test",
+    "lint": "npm run lint",
     "build": "npm run build",
-    "publish": "git tag vX.Y.Z && git push origin main && git push origin vX.Y.Z"
+    "test": "npm test",
+    "updateModelsDev": "npm run update-models-dev"
+  },
+  "verification": {
+    "lint": "not run this session",
+    "build": "passed",
+    "fullTests": "96 passed",
+    "publishWorkflow": "passed"
   },
   "capabilities": {
-    "targets": ["opencode", "codex", "claude-code"],
-    "proxyEndpoints": [
-      "/v1/responses",
-      "/v1/messages",
-      "/v1/chat/completions",
-      "/v1/completions"
+    "targets": [
+      "opencode",
+      "codex",
+      "claude-code"
     ],
-    "opencodeApiTypes": ["chat", "responses", "messages"]
+    "metadataSourcesImplemented": [
+      "user CLI --modalities override",
+      "provider/native runtime metadata",
+      "project-local model-provider-x.models.jsonc",
+      "repeatable CLI --model-registry <path>",
+      "built-in models.dev registry (5218 models, 142 providers)",
+      "fuzzy matching for model variants",
+      "cross-provider search",
+      "LM Studio native REST /api/v1/models",
+      "optional @lmstudio/sdk",
+      "conservative static heuristics"
+    ],
+    "opencodeModelFieldsGenerated": [
+      "modalities",
+      "tool_call",
+      "reasoning",
+      "limit.context"
+    ]
   },
+  "externalObservations": {
+    "lmStudio": {
+      "baseURL": "http://localhost:1234/v1",
+      "result": "Enrichment works; models.dev provides fallback for unknown variants."
+    },
+    "mimoPool": {
+      "baseURL": "http://127.0.0.1:3100/v1",
+      "models": [
+        "mimo-v2-omni",
+        "mimo-v2-pro",
+        "mimo-v2-tts",
+        "mimo-v2.5",
+        "mimo-v2.5-asr",
+        "mimo-v2.5-pro",
+        "mimo-v2.5-tts",
+        "mimo-v2.5-tts-voiceclone",
+        "mimo-v2.5-tts-voicedesign"
+      ],
+      "autoIdentified": 8,
+      "notFound": ["mimo-v2.5-asr"],
+      "result": "8/9 models auto-identified with correct capabilities."
+    }
+  },
+  "modelRegistryPrecedence": [
+    "user CLI overrides",
+    "provider/native runtime metadata",
+    "project-local registry overrides",
+    "built-in models.dev registry",
+    "conservative heuristics"
+  ],
   "secrets": {
     "status": "filtered",
-    "notes": "No API keys or tokens saved in handoff."
+    "notes": "No API keys or tokens are stored here."
   }
 }
