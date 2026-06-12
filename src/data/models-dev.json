@@ -1,6 +1,6 @@
 {
   "source": "models.dev",
-  "generatedAt": "2026-06-12T01:32:04.284Z",
+  "generatedAt": "2026-06-12T07:53:31.615Z",
   "providers": {
     "requesty": {
       "models": {
@@ -16505,24 +16505,6 @@
             "output": 8192
           }
         },
-        "meta-llama/Meta-Llama-3.1-8B-Instruct": {
-          "id": "meta-llama/Meta-Llama-3.1-8B-Instruct",
-          "type": "llm",
-          "reasoning": false,
-          "tool_call": true,
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "limit": {
-            "context": 128000,
-            "output": 4096
-          }
-        },
         "moonshotai/Kimi-K2.5-fast": {
           "id": "moonshotai/Kimi-K2.5-fast",
           "type": "llm",
@@ -16559,24 +16541,6 @@
           "limit": {
             "context": 256000,
             "output": 8192
-          }
-        },
-        "google/gemma-2-2b-it": {
-          "id": "google/gemma-2-2b-it",
-          "type": "llm",
-          "reasoning": false,
-          "tool_call": false,
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "limit": {
-            "context": 8192,
-            "output": 4096
           }
         },
         "google/gemma-3-27b-it": {
@@ -16728,7 +16692,7 @@
         "Qwen/Qwen3-235B-A22B-Instruct-2507": {
           "id": "Qwen/Qwen3-235B-A22B-Instruct-2507",
           "type": "llm",
-          "reasoning": true,
+          "reasoning": false,
           "tool_call": true,
           "modalities": {
             "input": [
@@ -20117,6 +20081,24 @@
             "output": 128000
           }
         },
+        "nemotron-3-ultra-550b": {
+          "id": "nemotron-3-ultra-550b",
+          "type": "llm",
+          "reasoning": false,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "limit": {
+            "context": 131072,
+            "output": 8192
+          }
+        },
         "minimax-m2.5": {
           "id": "minimax-m2.5",
           "type": "llm",
@@ -21336,6 +21318,25 @@
           "limit": {
             "context": 200000,
             "output": 4096
+          }
+        },
+        "anthropic-claude-fable-5": {
+          "id": "anthropic-claude-fable-5",
+          "type": "llm",
+          "reasoning": true,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "limit": {
+            "context": 1000000,
+            "output": 128000
           }
         },
         "nemotron-3-nano-omni": {
@@ -57638,6 +57639,30 @@
           "limit": {
             "context": 8192,
             "output": 8192
+          }
+        }
+      }
+    },
+    "zeldoc": {
+      "models": {
+        "z-code": {
+          "id": "z-code",
+          "type": "llm",
+          "reasoning": true,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "video"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "limit": {
+            "context": 262144,
+            "output": 262144
           }
         }
       }
@@ -95657,6 +95682,511 @@
           "limit": {
             "context": 202752,
             "output": 131072
+          }
+        }
+      }
+    },
+    "neon": {
+      "models": {
+        "gemini-3-flash": {
+          "id": "gemini-3-flash",
+          "type": "llm",
+          "reasoning": true,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "video",
+              "audio",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "limit": {
+            "context": 1048576,
+            "output": 65536
+          }
+        },
+        "claude-sonnet-4": {
+          "id": "claude-sonnet-4",
+          "type": "llm",
+          "reasoning": true,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "limit": {
+            "context": 200000,
+            "output": 64000
+          }
+        },
+        "claude-opus-4-5": {
+          "id": "claude-opus-4-5",
+          "type": "llm",
+          "reasoning": true,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "limit": {
+            "context": 200000,
+            "output": 64000
+          }
+        },
+        "gpt-5": {
+          "id": "gpt-5",
+          "type": "llm",
+          "reasoning": true,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "limit": {
+            "context": 400000,
+            "output": 128000
+          }
+        },
+        "gpt-5-1": {
+          "id": "gpt-5-1",
+          "type": "llm",
+          "reasoning": true,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "limit": {
+            "context": 400000,
+            "output": 128000
+          }
+        },
+        "gemini-3-pro": {
+          "id": "gemini-3-pro",
+          "type": "llm",
+          "reasoning": true,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "video",
+              "audio",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "limit": {
+            "context": 1048576,
+            "output": 65536
+          }
+        },
+        "gpt-5-2": {
+          "id": "gpt-5-2",
+          "type": "llm",
+          "reasoning": true,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "limit": {
+            "context": 400000,
+            "output": 128000
+          }
+        },
+        "gemini-3-1-flash-lite": {
+          "id": "gemini-3-1-flash-lite",
+          "type": "llm",
+          "reasoning": true,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "video",
+              "audio",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "limit": {
+            "context": 1048576,
+            "output": 65536
+          }
+        },
+        "claude-sonnet-4-5": {
+          "id": "claude-sonnet-4-5",
+          "type": "llm",
+          "reasoning": true,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "limit": {
+            "context": 200000,
+            "output": 64000
+          }
+        },
+        "claude-opus-4-7": {
+          "id": "claude-opus-4-7",
+          "type": "llm",
+          "reasoning": true,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "limit": {
+            "context": 1000000,
+            "output": 128000
+          }
+        },
+        "gemini-2-5-pro": {
+          "id": "gemini-2-5-pro",
+          "type": "llm",
+          "reasoning": true,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "audio",
+              "video",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "limit": {
+            "context": 1048576,
+            "output": 65536
+          }
+        },
+        "gpt-5-4-nano": {
+          "id": "gpt-5-4-nano",
+          "type": "llm",
+          "reasoning": true,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "limit": {
+            "context": 400000,
+            "output": 128000
+          }
+        },
+        "claude-opus-4-1": {
+          "id": "claude-opus-4-1",
+          "type": "llm",
+          "reasoning": true,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "limit": {
+            "context": 200000,
+            "output": 32000
+          }
+        },
+        "gpt-5-4-mini": {
+          "id": "gpt-5-4-mini",
+          "type": "llm",
+          "reasoning": true,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "limit": {
+            "context": 400000,
+            "output": 128000
+          }
+        },
+        "gemini-2-5-flash": {
+          "id": "gemini-2-5-flash",
+          "type": "llm",
+          "reasoning": true,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "audio",
+              "video",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "limit": {
+            "context": 1048576,
+            "output": 65536
+          }
+        },
+        "gpt-oss-120b": {
+          "id": "gpt-oss-120b",
+          "type": "llm",
+          "reasoning": true,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "limit": {
+            "context": 131072,
+            "output": 32768
+          }
+        },
+        "gpt-5-5": {
+          "id": "gpt-5-5",
+          "type": "llm",
+          "reasoning": true,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "limit": {
+            "context": 1050000,
+            "output": 128000
+          }
+        },
+        "gemini-3-1-pro": {
+          "id": "gemini-3-1-pro",
+          "type": "llm",
+          "reasoning": true,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "video",
+              "audio",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "limit": {
+            "context": 1048576,
+            "output": 65536
+          }
+        },
+        "claude-haiku-4-5": {
+          "id": "claude-haiku-4-5",
+          "type": "llm",
+          "reasoning": true,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "limit": {
+            "context": 200000,
+            "output": 64000
+          }
+        },
+        "claude-opus-4-6": {
+          "id": "claude-opus-4-6",
+          "type": "llm",
+          "reasoning": true,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "limit": {
+            "context": 1000000,
+            "output": 128000
+          }
+        },
+        "gpt-5-mini": {
+          "id": "gpt-5-mini",
+          "type": "llm",
+          "reasoning": true,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "limit": {
+            "context": 400000,
+            "output": 128000
+          }
+        },
+        "gpt-5-nano": {
+          "id": "gpt-5-nano",
+          "type": "llm",
+          "reasoning": true,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "limit": {
+            "context": 400000,
+            "output": 128000
+          }
+        },
+        "claude-sonnet-4-6": {
+          "id": "claude-sonnet-4-6",
+          "type": "llm",
+          "reasoning": true,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "limit": {
+            "context": 1000000,
+            "output": 64000
+          }
+        },
+        "gpt-5-4": {
+          "id": "gpt-5-4",
+          "type": "llm",
+          "reasoning": true,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "limit": {
+            "context": 1050000,
+            "output": 128000
+          }
+        },
+        "gpt-oss-20b": {
+          "id": "gpt-oss-20b",
+          "type": "llm",
+          "reasoning": true,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "limit": {
+            "context": 131072,
+            "output": 32768
           }
         }
       }

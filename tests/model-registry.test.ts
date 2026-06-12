@@ -4,7 +4,8 @@ import { tmpdir } from "node:os";
 import { describe, expect, it } from "vitest";
 import {
   loadModelRegistryFile,
-  resolveModelRegistryMetadata
+  resolveModelRegistryMetadata,
+  modelAliases
 } from "../src/core/model-registry";
 
 describe("model registry", () => {
@@ -93,6 +94,52 @@ describe("model registry", () => {
       id: "mimo-v2.5-asr",
       modalities: { input: ["audio"], output: ["text"] },
       metadataSources: ["project-registry"]
+    });
+  });
+
+  describe("modelAliases", () => {
+    it("strips provider prefix", () => {
+      const aliases = modelAliases("openai/gpt-4o");
+      expect(aliases).toContain("gpt-4o");
+    });
+
+    it("strips single suffix", () => {
+      const aliases = modelAliases("llama-3-70b-instruct");
+      expect(aliases).toContain("llama-3-70b");
+      expect(aliases).toContain("llama-3");
+    });
+
+    it("strips multiple suffixes iteratively", () => {
+      const aliases = modelAliases("llama-3-70b-instruct-gguf");
+      expect(aliases).toContain("llama-3-70b");
+      expect(aliases).toContain("llama-3");
+    });
+
+    it("handles decimal parameter sizes", () => {
+      const aliases = modelAliases("qwen3-1.5b-instruct");
+      expect(aliases).toContain("qwen3-1.5b");
+      expect(aliases).toContain("qwen3");
+    });
+
+    it("handles version suffixes", () => {
+      const aliases = modelAliases("gemini-2.0-flash-v2");
+      expect(aliases).toContain("gemini-2.0-flash");
+    });
+
+    it("handles size variants", () => {
+      const aliases = modelAliases("gpt-4o-mini");
+      expect(aliases).toContain("gpt-4o");
+    });
+
+    it("handles case insensitivity", () => {
+      const aliases = modelAliases("GPT-4O-INSTRUCT");
+      expect(aliases).toContain("gpt-4o");
+    });
+
+    it("removes duplicates", () => {
+      const aliases = modelAliases("gpt-4o");
+      const uniqueAliases = [...new Set(aliases)];
+      expect(aliases.length).toBe(uniqueAliases.length);
     });
   });
 });

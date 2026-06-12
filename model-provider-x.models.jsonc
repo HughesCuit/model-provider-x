@@ -1,0 +1,23 @@
+{
+  // Local mimo-pool metadata for models not in models.dev
+  "providers": {
+    "mimo-pool": {
+      "models": {
+        "mimo-v2.5-asr": {
+          "type": "asr",
+          "modalities": {
+            "input": ["audio"],
+            "output": ["text"]
+          },
+          "capabilities": {
+            "tool_call": false,
+            "reasoning": false
+          },
+          "limit": {
+            "context": 8192
+          }
+        }
+      }
+    }
+  }
+}

@@ -109,12 +109,36 @@ function lookupModel(models: Record<string, ModelRegistryModel> | undefined, ali
   if (!models) {
     return undefined;
   }
+  
+  // First try direct match
   for (const alias of aliases) {
     if (models[alias]) {
       return models[alias];
     }
   }
+  
+  // Then try fuzzy match: check if any model key matches an alias
+  for (const modelKey of Object.keys(models)) {
+    const modelKeyAliases = modelAliasesForLookup(modelKey);
+    for (const alias of aliases) {
+      if (modelKeyAliases.includes(alias)) {
+        return models[modelKey];
+      }
+    }
+  }
+  
   return undefined;
+}
+
+function modelAliasesForLookup(modelId: string): string[] {
+  const normalized = modelId.trim().toLowerCase();
+  const withoutPrefix = normalized.includes("/") ? normalized.split("/").pop()! : normalized;
+  
+  // Try removing date suffixes like "-20241022", "-20240620" (common for Anthropic models)
+  const dateMatch = withoutPrefix.match(/-\d{8}$/);
+  const withoutDate = dateMatch ? withoutPrefix.slice(0, -dateMatch[0].length) : withoutPrefix;
+  
+  return [...new Set([normalized, withoutPrefix, withoutDate])];
 }
 
 function normalizeRegistryModel(modelId: string, model: ModelRegistryModel, source: string): ModelInfo {
@@ -204,7 +228,7 @@ function normalizeModels(value: unknown): Record<string, ModelRegistryModel> | u
   return Object.keys(models).length ? models : undefined;
 }
 
-function modelAliases(modelId: string): string[] {
+export function modelAliases(modelId: string): string[] {
   const normalized = modelId.trim().toLowerCase();
   const withoutPrefix = normalized.includes("/") ? normalized.split("/").pop()! : normalized;
   
@@ -217,26 +241,36 @@ function modelAliases(modelId: string): string[] {
     "-ud", "-xl", "-xs", "-small", "-medium", "-large", "-mini", "-nano", "-micro",
     "-turbo", "-fast", "-pro", "-plus", "-max", "-ultra", "-flash", "-lite",
     "-mtp", "-moe", "-a17b", "-a22b", "-a3b", "-a10b", "-a12b", "-a55b",
-    "-chat", "-base", "-raw", "-uncensored", "-abliterated"
+    "-base", "-raw", "-uncensored", "-abliterated"
   ];
   
+  // Iteratively strip suffixes to handle combinations like "-instruct-gguf"
   let fuzzy = withoutPrefix;
-  for (const suffix of suffixes) {
-    if (fuzzy.endsWith(suffix)) {
-      fuzzy = fuzzy.slice(0, -suffix.length);
-      break;
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const suffix of suffixes) {
+      if (fuzzy.endsWith(suffix)) {
+        fuzzy = fuzzy.slice(0, -suffix.length);
+        changed = true;
+        break;
+      }
     }
   }
   
-  // Also try removing version suffixes like "-v1", "-v2", etc.
+  // Also try removing version suffixes like "-v1", "-v2", "-v4", etc.
   const versionMatch = fuzzy.match(/-v\d+$/);
   const withoutVersion = versionMatch ? fuzzy.slice(0, -versionMatch[0].length) : fuzzy;
   
-  // Try removing parameter size suffixes like "-12b", "-7b", "-70b", etc.
-  const paramMatch = fuzzy.match(/-\d+[bBmMkKtT]$/);
+  // Try removing parameter size suffixes like "-12b", "-7b", "-70b", "-1.5b", "-0.6b", etc.
+  const paramMatch = fuzzy.match(/-\d+(\.\d+)?[bBmMkKtT]$/);
   const withoutParams = paramMatch ? fuzzy.slice(0, -paramMatch[0].length) : fuzzy;
   
-  return [...new Set([normalized, withoutPrefix, fuzzy, withoutVersion, withoutParams])];
+  // Try removing date suffixes like "-20241022", "-20240620" (common for Anthropic models)
+  const dateMatch = fuzzy.match(/-\d{8}$/);
+  const withoutDate = dateMatch ? fuzzy.slice(0, -dateMatch[0].length) : fuzzy;
+  
+  return [...new Set([normalized, withoutPrefix, fuzzy, withoutVersion, withoutParams, withoutDate])];
 }
 
 function cleanModelInfo(model: ModelInfo): ModelInfo {
