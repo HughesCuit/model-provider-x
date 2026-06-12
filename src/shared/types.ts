@@ -19,6 +19,7 @@ export interface ModelInfo {
   parameterSize?: string;
   state?: string;
   contextLength?: number;
+  maxOutputTokens?: number;
   modalities?: ModelModalities;
   capabilities?: {
     toolCall?: boolean;

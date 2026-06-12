@@ -207,8 +207,11 @@ function buildModelConfig(modelId: string, modelInfo?: ModelInfo): import("../sh
   if (modelInfo?.capabilities?.toolCall) {
     config.tool_call = true;
   }
-  if (modelInfo?.contextLength) {
-    config.limit = { context: modelInfo.contextLength };
+  if (modelInfo?.contextLength || modelInfo?.maxOutputTokens) {
+    config.limit = {
+      ...(modelInfo.contextLength ? { context: modelInfo.contextLength } : {}),
+      ...(modelInfo.maxOutputTokens ? { output: modelInfo.maxOutputTokens } : {})
+    };
   }
   return config;
 }
@@ -293,6 +296,7 @@ function normalizeModelInfo(raw: Record<string, unknown>, source: string): Model
   const modalities = parseCapabilitiesFromApi(raw as { modalities?: unknown; capabilities?: unknown });
   const type = stringValue(raw.type);
   const contextLength = numberValue(raw.max_context_length ?? raw.context_length ?? raw.contextLength);
+  const maxOutputTokens = numberValue(raw.max_output_tokens ?? raw.maxOutputTokens ?? raw.output_limit);
   const toolCall = capabilityFlag(
     raw.tool_call ??
       raw.tool_calls ??
@@ -316,6 +320,7 @@ function normalizeModelInfo(raw: Record<string, unknown>, source: string): Model
     parameterSize: stringValue(raw.params_string ?? raw.paramsString ?? raw.parameterSize),
     state: stringValue(raw.state) ?? (Array.isArray(raw.loaded_instances) && raw.loaded_instances.length > 0 ? "loaded" : undefined),
     contextLength,
+    maxOutputTokens,
     modalities,
     capabilities: toolCall || reasoning ? { toolCall, reasoning } : undefined,
     metadataSources: [source]
@@ -357,6 +362,7 @@ function mergeModelInfo(base: ModelInfo, next: ModelInfo): ModelInfo {
     parameterSize: next.parameterSize ?? base.parameterSize,
     state: next.state ?? base.state,
     contextLength: next.contextLength ?? base.contextLength,
+    maxOutputTokens: next.maxOutputTokens ?? base.maxOutputTokens,
     modalities: next.modalities ?? base.modalities,
     capabilities:
       base.capabilities || next.capabilities
@@ -399,6 +405,7 @@ function cleanModelInfo(model: ModelInfo): ModelInfo {
     ...(model.parameterSize ? { parameterSize: model.parameterSize } : {}),
     ...(model.state ? { state: model.state } : {}),
     ...(model.contextLength ? { contextLength: model.contextLength } : {}),
+    ...(model.maxOutputTokens ? { maxOutputTokens: model.maxOutputTokens } : {}),
     ...(model.modalities ? { modalities: model.modalities } : {}),
     ...(capabilities ? { capabilities } : {}),
     ...(model.metadataSources?.length ? { metadataSources: model.metadataSources } : {})

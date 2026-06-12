@@ -130,6 +130,7 @@ function normalizeRegistryModel(modelId: string, model: ModelRegistryModel, sour
     parameterSize: model.parameterSize,
     state: model.state,
     contextLength: model.contextLength ?? model.limit?.context,
+    maxOutputTokens: model.limit?.output,
     modalities,
     capabilities: toolCall || reasoning ? { toolCall, reasoning } : undefined,
     metadataSources: [source]
@@ -160,6 +161,7 @@ function mergeRegistryInfo(base: ModelInfo, next: ModelInfo): ModelInfo {
     parameterSize: next.parameterSize ?? base.parameterSize,
     state: next.state ?? base.state,
     contextLength: next.contextLength ?? base.contextLength,
+    maxOutputTokens: next.maxOutputTokens ?? base.maxOutputTokens,
     modalities: next.modalities ?? base.modalities,
     capabilities:
       base.capabilities || next.capabilities
@@ -250,6 +252,7 @@ function cleanModelInfo(model: ModelInfo): ModelInfo {
     ...(model.parameterSize ? { parameterSize: model.parameterSize } : {}),
     ...(model.state ? { state: model.state } : {}),
     ...(model.contextLength ? { contextLength: model.contextLength } : {}),
+    ...(model.maxOutputTokens ? { maxOutputTokens: model.maxOutputTokens } : {}),
     ...(model.modalities ? { modalities: model.modalities } : {}),
     ...(capabilities ? { capabilities } : {}),
     ...(model.metadataSources?.length ? { metadataSources: model.metadataSources } : {})
