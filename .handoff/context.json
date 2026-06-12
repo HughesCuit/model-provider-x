@@ -1,21 +1,29 @@
 {
   "version": "1.1.0",
-  "savedAt": "2026-06-12T15:15:00+08:00",
+  "savedAt": "2026-06-12T16:10:00+08:00",
   "project": {
     "name": "@heventure/model-provider-x",
     "language": "TypeScript",
-    "packageVersion": "0.2.7-beta.0"
+    "packageVersion": "0.2.8-beta.0"
   },
   "git": {
     "branch": "main",
     "tracking": "origin/main",
     "head": {
-      "hash": "b62f2fc",
-      "message": "Release model-provider-x 0.2.7-beta.0",
-      "tag": "v0.2.7-beta.0"
+      "hash": "01d37ee",
+      "message": "Release model-provider-x 0.2.8-beta.0",
+      "tag": "v0.2.8-beta.0"
     },
     "workingTree": "clean",
     "recentCommits": [
+      {
+        "hash": "01d37ee",
+        "message": "Release model-provider-x 0.2.8-beta.0"
+      },
+      {
+        "hash": "a4622ee",
+        "message": "Release model-provider-x 0.2.7"
+      },
       {
         "hash": "b62f2fc",
         "message": "Release model-provider-x 0.2.7-beta.0"
@@ -27,26 +35,18 @@
       {
         "hash": "d1ce206",
         "message": "fix: add output limit to OpenCode config generation"
-      },
-      {
-        "hash": "7a4c7c6",
-        "message": "feat: expand provider presets to 20 providers"
-      },
-      {
-        "hash": "a5e7f45",
-        "message": "feat: integrate models.dev registry for model capability detection"
       }
     ]
   },
   "release": {
     "status": "published",
     "versions": {
-      "latest": "0.2.6",
-      "next": "0.2.7-beta.0"
+      "latest": "0.2.7",
+      "next": "0.2.8-beta.0"
     },
     "npmDistTags": {
-      "latest": "0.2.6",
-      "next": "0.2.7-beta.0"
+      "latest": "0.2.7",
+      "next": "0.2.8-beta.0"
     }
   },
   "commands": {
@@ -57,8 +57,8 @@
   },
   "verification": {
     "build": "passed",
-    "fullTests": "96 passed",
-    "publishWorkflow": "passed"
+    "fullTests": "104 passed",
+    "publishWorkflow": "pending"
   },
   "capabilities": {
     "targets": [
@@ -71,8 +71,12 @@
       "provider/native runtime metadata",
       "project-local model-provider-x.models.jsonc",
       "repeatable CLI --model-registry <path>",
-      "built-in models.dev registry (5218 models, 142 providers)",
+      "built-in models.dev registry (5244 models, 144 providers)",
       "fuzzy matching for model variants",
+      "iterative suffix stripping",
+      "date suffix support (Anthropic models)",
+      "decimal parameter size support",
+      "bidirectional fuzzy matching",
       "cross-provider search",
       "LM Studio native REST /api/v1/models",
       "optional @lmstudio/sdk",
@@ -92,9 +96,9 @@
     "gateway: OpenRouter, Requesty, SiliconFlow, NVIDIA NIM"
   ],
   "mimoPoolSupport": {
-    "autoIdentified": 8,
-    "notFound": ["mimo-v2.5-asr"],
-    "result": "8/9 models auto-identified with correct capabilities."
+    "autoIdentified": 9,
+    "notFound": [],
+    "result": "9/9 models identified with correct capabilities."
   },
   "modelRegistryPrecedence": [
     "user CLI overrides",
