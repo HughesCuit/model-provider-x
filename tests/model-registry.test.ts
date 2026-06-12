@@ -15,14 +15,14 @@ describe("model registry", () => {
     });
 
     expect(metadata).toMatchObject({
-      id: "openai/gpt-oss-20b",
+      id: "gpt-oss-20b",
       type: "llm",
-      contextLength: 131072,
+      contextLength: 128000,
       capabilities: {
         reasoning: true,
         toolCall: true
       },
-      metadataSources: expect.arrayContaining(["models-dev"])
+      metadataSources: expect.arrayContaining(["models.dev"])
     });
   });
 

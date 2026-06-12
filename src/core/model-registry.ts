@@ -1,26 +1,33 @@
 import { readFile } from "node:fs/promises";
 import { parse } from "jsonc-parser";
+import { fileURLToPath } from "node:url";
+import { dirname, resolve } from "node:path";
 import type { ModelInfo, ModelModalities, ModelRegistry, ModelRegistryModel } from "../shared/types.js";
 
 export const DEFAULT_MODEL_REGISTRY_FILE = "model-provider-x.models.jsonc";
 
-const BUILT_IN_MODELS_DEV_REGISTRY: ModelRegistry = {
-  source: "models-dev",
-  providers: {
-    openai: {
-      models: {
-        "gpt-oss-20b": {
-          type: "llm",
-          contextLength: 131072,
-          capabilities: {
-            reasoning: true,
-            toolCall: true
-          }
-        }
-      }
-    }
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const MODELS_DEV_DATA_PATH = resolve(__dirname, "../data/models-dev.json");
+
+let modelsDevCache: ModelRegistry | null = null;
+
+async function loadModelsDevRegistry(): Promise<ModelRegistry> {
+  if (modelsDevCache) {
+    return modelsDevCache;
   }
-};
+
+  try {
+    const text = await readFile(MODELS_DEV_DATA_PATH, "utf-8");
+    const data = JSON.parse(text) as { source?: string; providers?: Record<string, { models?: Record<string, ModelRegistryModel> }> };
+    modelsDevCache = {
+      source: data.source ?? "models-dev",
+      providers: data.providers
+    };
+    return modelsDevCache;
+  } catch {
+    return { source: "models-dev", providers: {} };
+  }
+}
 
 export async function loadModelRegistryFile(path: string): Promise<ModelRegistry> {
   const text = await readFile(path, "utf8");
@@ -37,8 +44,9 @@ export async function resolveModelRegistryMetadata(input: {
   registries?: ModelRegistry[];
   includeBuiltIn?: boolean;
 }): Promise<ModelInfo | undefined> {
+  const builtInRegistry = input.includeBuiltIn === false ? undefined : await loadModelsDevRegistry();
   const registries = [
-    ...(input.includeBuiltIn === false ? [] : [BUILT_IN_MODELS_DEV_REGISTRY]),
+    ...(builtInRegistry ? [builtInRegistry] : []),
     ...(input.registries ?? [])
   ];
 
@@ -65,6 +73,8 @@ function normalizeRegistry(value: Record<string, unknown>, fallbackSource: strin
 
 function lookupRegistryModel(registry: ModelRegistry, providerId: string | undefined, modelId: string): ModelRegistryModel | undefined {
   const aliases = modelAliases(modelId);
+  
+  // First try the specified provider
   if (providerId) {
     const providerModels = registry.providers?.[providerId]?.models;
     const match = lookupModel(providerModels, aliases);
@@ -78,6 +88,16 @@ function lookupRegistryModel(registry: ModelRegistry, providerId: string | undef
       const providerMatch = lookupModel(provider?.models, aliases);
       if (providerMatch) {
         return providerMatch;
+      }
+    }
+  }
+
+  // Search across all providers if not found in specified provider
+  if (registry.providers) {
+    for (const [, provider] of Object.entries(registry.providers)) {
+      const match = lookupModel(provider.models, aliases);
+      if (match) {
+        return match;
       }
     }
   }
@@ -183,9 +203,38 @@ function normalizeModels(value: unknown): Record<string, ModelRegistryModel> | u
 }
 
 function modelAliases(modelId: string): string[] {
-  const normalized = modelId.trim();
+  const normalized = modelId.trim().toLowerCase();
   const withoutPrefix = normalized.includes("/") ? normalized.split("/").pop()! : normalized;
-  return [...new Set([normalized, withoutPrefix])];
+  
+  // Strip common suffixes for fuzzy matching
+  const suffixes = [
+    "-it", "-qat", "-instruct", "-chat", "-gguf", "-gptq", "-awq", "-exl2",
+    "-fp16", "-fp32", "-int4", "-int8", "-4bit", "-8bit", "-16bit",
+    "-preview", "-latest", "-beta", "-alpha", "-rc", "-snapshot",
+    "-mlx", "-mlxc", "-bnb", "-hqq",
+    "-ud", "-xl", "-xs", "-small", "-medium", "-large", "-mini", "-nano", "-micro",
+    "-turbo", "-fast", "-pro", "-plus", "-max", "-ultra", "-flash", "-lite",
+    "-mtp", "-moe", "-a17b", "-a22b", "-a3b", "-a10b", "-a12b", "-a55b",
+    "-chat", "-base", "-raw", "-uncensored", "-abliterated"
+  ];
+  
+  let fuzzy = withoutPrefix;
+  for (const suffix of suffixes) {
+    if (fuzzy.endsWith(suffix)) {
+      fuzzy = fuzzy.slice(0, -suffix.length);
+      break;
+    }
+  }
+  
+  // Also try removing version suffixes like "-v1", "-v2", etc.
+  const versionMatch = fuzzy.match(/-v\d+$/);
+  const withoutVersion = versionMatch ? fuzzy.slice(0, -versionMatch[0].length) : fuzzy;
+  
+  // Try removing parameter size suffixes like "-12b", "-7b", "-70b", etc.
+  const paramMatch = fuzzy.match(/-\d+[bBmMkKtT]$/);
+  const withoutParams = paramMatch ? fuzzy.slice(0, -paramMatch[0].length) : fuzzy;
+  
+  return [...new Set([normalized, withoutPrefix, fuzzy, withoutVersion, withoutParams])];
 }
 
 function cleanModelInfo(model: ModelInfo): ModelInfo {

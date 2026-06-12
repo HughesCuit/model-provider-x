@@ -145,7 +145,7 @@ The merge order is:
 1. User overrides such as `--modalities`.
 2. Provider or native runtime metadata.
 3. Project-local registry overrides.
-4. Built-in models.dev-shaped metadata.
+4. Built-in models.dev metadata (5000+ models from 140+ providers).
 5. Conservative model-name heuristics.
 
 By default, the CLI reads `model-provider-x.models.jsonc` from the current working directory when it exists.
@@ -179,6 +179,16 @@ Example registry:
   }
 }
 ```
+
+### Updating Models.dev Data
+
+The built-in models.dev data is bundled with the package. To update it to the latest version:
+
+```bash
+npm run update-models-dev
+```
+
+This fetches the latest model metadata from [models.dev](https://models.dev) and updates `src/data/models-dev.json`.
 
 ## Commands
 
