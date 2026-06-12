@@ -1,6 +1,8 @@
 {
-  "version": "1.1.0",
-  "savedAt": "2026-06-12T16:10:00+08:00",
+  "version": "1.2.0",
+  "savedAt": "2026-06-12T19:55:00+08:00",
+  "lang": "zh",
+  "verbosity": "med",
   "project": {
     "name": "@heventure/model-provider-x",
     "language": "TypeScript",
@@ -10,12 +12,16 @@
     "branch": "main",
     "tracking": "origin/main",
     "head": {
-      "hash": "01d37ee",
-      "message": "Release model-provider-x 0.2.8-beta.0",
+      "hash": "027cc5b",
+      "message": "docs: update handoff with v0.2.8-beta.0 context and next TODOs",
       "tag": "v0.2.8-beta.0"
     },
     "workingTree": "clean",
     "recentCommits": [
+      {
+        "hash": "027cc5b",
+        "message": "docs: update handoff with v0.2.8-beta.0 context and next TODOs"
+      },
       {
         "hash": "01d37ee",
         "message": "Release model-provider-x 0.2.8-beta.0"
@@ -31,10 +37,6 @@
       {
         "hash": "7e1a475",
         "message": "Release model-provider-x 0.2.6"
-      },
-      {
-        "hash": "d1ce206",
-        "message": "fix: add output limit to OpenCode config generation"
       }
     ]
   },
@@ -98,7 +100,7 @@
   "mimoPoolSupport": {
     "autoIdentified": 9,
     "notFound": [],
-    "result": "9/9 models identified with correct capabilities."
+    "result": "9/9 模型已识别，具有正确能力"
   },
   "modelRegistryPrecedence": [
     "user CLI overrides",
