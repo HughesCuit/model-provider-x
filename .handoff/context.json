@@ -1,57 +1,52 @@
 {
   "version": "1.1.0",
-  "savedAt": "2026-06-12T10:00:00+08:00",
+  "savedAt": "2026-06-12T15:15:00+08:00",
   "project": {
     "name": "@heventure/model-provider-x",
     "language": "TypeScript",
-    "packageVersion": "0.2.6-beta.0"
+    "packageVersion": "0.2.7-beta.0"
   },
   "git": {
     "branch": "main",
     "tracking": "origin/main",
     "head": {
-      "hash": "fa1031c",
-      "message": "Release model-provider-x 0.2.6-beta.0",
-      "tag": "v0.2.6-beta.0"
+      "hash": "b62f2fc",
+      "message": "Release model-provider-x 0.2.7-beta.0",
+      "tag": "v0.2.7-beta.0"
     },
-    "workingTree": "clean-code-with-untracked-handoff-docs",
-    "untrackedFiles": [
-      ".handoff.config.json",
-      ".handoff/",
-      "docs/"
-    ],
+    "workingTree": "clean",
     "recentCommits": [
       {
-        "hash": "fa1031c",
-        "message": "Release model-provider-x 0.2.6-beta.0"
+        "hash": "b62f2fc",
+        "message": "Release model-provider-x 0.2.7-beta.0"
       },
       {
-        "hash": "9ade425",
-        "message": "Release model-provider-x 0.2.5"
+        "hash": "7e1a475",
+        "message": "Release model-provider-x 0.2.6"
+      },
+      {
+        "hash": "d1ce206",
+        "message": "fix: add output limit to OpenCode config generation"
+      },
+      {
+        "hash": "7a4c7c6",
+        "message": "feat: expand provider presets to 20 providers"
       },
       {
         "hash": "a5e7f45",
         "message": "feat: integrate models.dev registry for model capability detection"
-      },
-      {
-        "hash": "bbb2d1a",
-        "message": "feat: enrich model metadata registry"
-      },
-      {
-        "hash": "305a4fe",
-        "message": "feat: add model modalities support for OpenCode config"
       }
     ]
   },
   "release": {
     "status": "published",
     "versions": {
-      "latest": "0.2.5",
-      "next": "0.2.6-beta.0"
+      "latest": "0.2.6",
+      "next": "0.2.7-beta.0"
     },
     "npmDistTags": {
-      "latest": "0.2.5",
-      "next": "0.2.6-beta.0"
+      "latest": "0.2.6",
+      "next": "0.2.7-beta.0"
     }
   },
   "commands": {
@@ -61,7 +56,6 @@
     "updateModelsDev": "npm run update-models-dev"
   },
   "verification": {
-    "lint": "not run this session",
     "build": "passed",
     "fullTests": "96 passed",
     "publishWorkflow": "passed"
@@ -88,31 +82,19 @@
       "modalities",
       "tool_call",
       "reasoning",
-      "limit.context"
+      "limit.context",
+      "limit.output"
     ]
   },
-  "externalObservations": {
-    "lmStudio": {
-      "baseURL": "http://localhost:1234/v1",
-      "result": "Enrichment works; models.dev provides fallback for unknown variants."
-    },
-    "mimoPool": {
-      "baseURL": "http://127.0.0.1:3100/v1",
-      "models": [
-        "mimo-v2-omni",
-        "mimo-v2-pro",
-        "mimo-v2-tts",
-        "mimo-v2.5",
-        "mimo-v2.5-asr",
-        "mimo-v2.5-pro",
-        "mimo-v2.5-tts",
-        "mimo-v2.5-tts-voiceclone",
-        "mimo-v2.5-tts-voicedesign"
-      ],
-      "autoIdentified": 8,
-      "notFound": ["mimo-v2.5-asr"],
-      "result": "8/9 models auto-identified with correct capabilities."
-    }
+  "providerPresets": [
+    "local: Unsloth, LM Studio, Ollama, vLLM",
+    "cloud: OpenAI, Anthropic, Google, DeepSeek, Mistral, Groq, Together, Fireworks, xAI, Cohere, Alibaba",
+    "gateway: OpenRouter, Requesty, SiliconFlow, NVIDIA NIM"
+  ],
+  "mimoPoolSupport": {
+    "autoIdentified": 8,
+    "notFound": ["mimo-v2.5-asr"],
+    "result": "8/9 models auto-identified with correct capabilities."
   },
   "modelRegistryPrecedence": [
     "user CLI overrides",

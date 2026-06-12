@@ -19,30 +19,37 @@
   - Architecture: `-mtp`, `-moe`, `-a17b`, `-a22b`
   - Size: `-small`, `-large`, `-mini`, `-nano`, `-pro`, `-plus`
 - Also strip parameter size suffixes like `-12b`, `-7b`, `-70b`.
-- This allows `gemma-4-12b-qat` to match `gemma-4` in models.dev.
 
 ## Cross-Provider Search
 
 - When model not found in specified provider, search across all providers.
 - This handles cases where user's provider hosts models from different vendors.
-- Example: user's `lmstudio` provider may host `openai/gpt-4o` which is in models.dev under `openai` provider.
+
+## Provider Presets Expansion
+
+- Expanded from 6 to 20 providers.
+- Grouped providers by category (local/cloud/gateway).
+- Added major cloud providers and gateways.
+
+## Output Limit Fix
+
+- Added `maxOutputTokens` field to `ModelInfo` type.
+- Fixed OpenCode validation error: "Missing key provider.*.models.*.limit.output".
+- Now generates both `limit.context` and `limit.output`.
+
+## Release Strategy
+
+- v0.2.6 promoted to `latest` tag (stable release).
+- v0.2.7-beta.0 published as `next` tag (development version).
+- GitHub Actions workflow automatically determines tag based on version suffix.
 
 ## AI SDK Clarification
 
 - @ai-sdk/openai-compatible is a client library, NOT a metadata source.
-- It does not provide model capability detection.
 - models.dev is the correct source for model metadata.
-- AI SDK is useful for API calls but not for capability detection.
-
-## Release Strategy
-
-- v0.2.5 promoted to `latest` tag (stable release).
-- v0.2.6-beta.0 published as `next` tag (development version).
-- GitHub Actions workflow automatically determines tag based on version suffix.
 
 ## MiMo Model Support
 
 - 8/9 MiMo-pool models auto-identified via models.dev.
 - `mimo-v2.5-asr` not found in models.dev; needs local registry override.
 - TTS models correctly identified with text → audio modalities.
-- Multimodal models correctly identified with image/audio/video/pdf inputs.
