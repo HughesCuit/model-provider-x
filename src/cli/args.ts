@@ -136,11 +136,11 @@ export function parseModelSelection(selection: string, models: string[]): string
 }
 
 export function usage(): string {
-  return `model-provider-x
+  return `model-provider-x (alias: mpx)
 
 Usage:
-  model-provider-x [options]
-  model-provider-x setup [options]
+  mpx [options]
+  mpx setup [options]
 
 Options:
   --base-url <url>     OpenAI-compatible API base URL, for example http://localhost:8888/v1

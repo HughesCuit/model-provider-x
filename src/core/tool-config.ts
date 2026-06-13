@@ -77,7 +77,10 @@ function normalizeToolConfig(config: Partial<ToolConfig>): ToolConfig {
             name: String(value.name ?? id),
             baseURL: String(value.baseURL ?? ""),
             apiKey: value.apiKey ? String(value.apiKey) : undefined,
-            models: Array.isArray(value.models) ? value.models.map(String) : []
+            models: Array.isArray(value.models) ? value.models.map(String) : [],
+            target: isValidTarget(value.target) ? value.target : undefined,
+            opencodeApiType: isValidOpencodeApiType(value.opencodeApiType) ? value.opencodeApiType : undefined,
+            proxy: typeof value.proxy === "boolean" ? value.proxy : undefined
           }
         ];
       })
@@ -100,4 +103,12 @@ async function fileExists(path: string): Promise<boolean> {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isValidTarget(value: unknown): value is "opencode" | "codex" | "claude-code" {
+  return typeof value === "string" && ["opencode", "codex", "claude-code"].includes(value);
+}
+
+function isValidOpencodeApiType(value: unknown): value is "chat" | "responses" | "messages" {
+  return typeof value === "string" && ["chat", "responses", "messages"].includes(value);
 }

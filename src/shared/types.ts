@@ -119,6 +119,9 @@ export interface ProviderProfile {
   baseURL: string;
   apiKey?: string;
   models: string[];
+  target?: "opencode" | "codex" | "claude-code";
+  opencodeApiType?: OpenCodeApiType;
+  proxy?: boolean;
 }
 
 export interface ProxyConfig {

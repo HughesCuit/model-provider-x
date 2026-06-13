@@ -8,7 +8,7 @@ import { createProxyAuthToken, getDefaultToolConfigPath, readToolConfig, upsertP
 import { discoverOpenCodeConfigs, getDefaultConfigPath, writeProviderToConfig } from "../core/config.js";
 import { buildProviderConfig, detectProviderCapabilities, recommendProxyMode, validateAndFetchModels, type ProviderApiKind, type ProviderCapabilities } from "../core/provider.js";
 import { DEFAULT_MODEL_REGISTRY_FILE } from "../core/model-registry.js";
-import type { DiscoveredConfig, OpenCodeApiType, ModelInfo, ModelModalities } from "../shared/types.js";
+import type { DiscoveredConfig, OpenCodeApiType, ModelInfo, ModelModalities, ProviderProfile } from "../shared/types.js";
 import { isKnownModel } from "../core/model-capabilities.js";
 import { startProxyServer } from "../proxy/server.js";
 import { defaultClaudeModelMapping, getDefaultClaudeSettingsPath, writeClaudeCodeSettings, type ClaudeModelMapping } from "../targets/claude-code.js";
@@ -143,6 +143,30 @@ async function runSetup(command: Extract<CliCommand, { command: "setup" }>) {
   const rl = createInterface({ input, output });
   try {
     output.write(canUseTui() ? renderIntro() : "model-provider-x\n\n");
+
+    // Check for existing profiles
+    const config = await readToolConfig();
+    const profileIds = Object.keys(config.profiles);
+    let selectedProfileId: string | undefined;
+
+    if (profileIds.length > 0 && !command.options.baseURL && !command.options.providerPreset) {
+      selectedProfileId = await resolveProfileAction(rl, config, profileIds);
+    }
+
+    if (selectedProfileId) {
+      const savedProfile = config.profiles[selectedProfileId];
+      const wantModify = await askModifyProfile(rl, savedProfile);
+
+      if (!wantModify) {
+        // Directly apply saved profile
+        await applySavedProfile(rl, savedProfile);
+        return;
+      }
+
+      // Pre-fill command options with saved profile
+      command = mergeProfileIntoCommand(command, savedProfile);
+    }
+
     const providerInput = await collectProviderInput(rl, command);
     output.write("Detecting provider capabilities...\n");
     const capabilities = await detectProviderCapabilities({ baseURL: providerInput.baseURL, apiKey: providerInput.apiKey });
@@ -164,6 +188,160 @@ async function runSetup(command: Extract<CliCommand, { command: "setup" }>) {
   } finally {
     rl.close();
   }
+}
+
+async function resolveProfileAction(
+  rl: ReturnType<typeof createInterface>,
+  config: Awaited<ReturnType<typeof readToolConfig>>,
+  profileIds: string[]
+): Promise<string | undefined> {
+  const choices: Choice<string | undefined>[] = [
+    { label: "Create new profile", value: undefined, hint: "start fresh" },
+    ...profileIds.map((id): Choice<string> => {
+      const p = config.profiles[id];
+      const keyHint = p.apiKey ? "key set" : "no key";
+      const modelCount = `${p.models.length} models`;
+      const targetHint = p.target ?? "no target";
+      return {
+        label: `${p.name} (${id})`,
+        value: id,
+        hint: `${p.baseURL} · ${modelCount} · ${keyHint} · ${targetHint}`
+      };
+    })
+  ];
+
+  if (canUseTui()) {
+    return selectChoice("Select profile", choices);
+  }
+
+  output.write("Existing profiles:\n");
+  choices.forEach((c, i) => {
+    const hint = c.hint ? ` - ${c.hint}` : "";
+    output.write(`  ${i}. ${c.label}${hint}\n`);
+  });
+  const answer = await rl.question("Select profile number or press Enter for new: ");
+  const idx = Number(answer.trim());
+  if (!answer.trim() || !Number.isInteger(idx) || idx === 0) return undefined;
+  return choices[idx]?.value;
+}
+
+async function askModifyProfile(
+  rl: ReturnType<typeof createInterface>,
+  profile: ProviderProfile
+): Promise<boolean> {
+  output.write(`\nSelected profile: ${profile.name}\n`);
+  output.write(`  Provider: ${profile.baseURL}\n`);
+  output.write(`  Models: ${profile.models.length}\n`);
+  if (profile.target) {
+    output.write(`  Target: ${profile.target}\n`);
+  }
+
+  if (canUseTui()) {
+    return selectChoice("What to do?", [
+      { label: "Use as-is", value: false, hint: "apply directly" },
+      { label: "Modify settings", value: true, hint: "update models, key, etc." }
+    ]);
+  }
+
+  const answer = await rl.question("Use this profile as-is or modify? [use/modify] ");
+  return answer.trim().toLowerCase() === "modify";
+}
+
+async function applySavedProfile(
+  rl: ReturnType<typeof createInterface>,
+  profile: ProviderProfile
+): Promise<void> {
+  const target = profile.target ?? "opencode";
+  const toolConfigPath = getDefaultToolConfigPath();
+
+  if (target === "opencode") {
+    const opencodeApiType = profile.opencodeApiType ?? "chat";
+    const baseURL = profile.proxy
+      ? `http://127.0.0.1:4141/v1`
+      : profile.baseURL;
+    const apiKey = profile.proxy
+      ? (await readToolConfig()).proxy.authToken
+      : profile.apiKey ?? "";
+
+    const fragment = buildProviderConfig({
+      providerId: profile.id,
+      providerName: profile.name,
+      baseURL,
+      apiKey,
+      models: profile.models,
+      opencodeApiType
+    });
+
+    const targetPath = await chooseConfigPath(rl, profile.id, false);
+    if (targetPath) {
+      const result = await writeProviderToConfig({ targetPath, providerId: profile.id, provider: fragment.provider[profile.id] });
+      output.write(`Updated ${result.targetPath}\n`);
+      if (result.backupPath) {
+        output.write(`Backup: ${result.backupPath}\n`);
+      }
+    } else {
+      output.write(`${JSON.stringify(fragment, null, 2)}\n`);
+    }
+    return;
+  }
+
+  if (target === "codex") {
+    const proxyBaseURL = profile.proxy
+      ? `http://127.0.0.1:4141/v1`
+      : profile.baseURL;
+    const result = await writeCodexConfig({
+      targetPath: getDefaultCodexConfigPath(),
+      providerId: profile.id,
+      providerName: profile.name,
+      baseURL: proxyBaseURL,
+      authCommand: "model-provider-x",
+      authArgs: profile.proxy ? ["proxy", "token"] : ["config", "api-key", "--profile", profile.id],
+      model: profile.models[0] ?? ""
+    });
+    output.write(`Updated Codex config: ${result.targetPath}\n`);
+    return;
+  }
+
+  // claude-code
+  const proxyBaseURL = profile.proxy
+    ? `http://127.0.0.1:4141`
+    : profile.baseURL;
+  const modelMapping = defaultClaudeModelMapping(profile.models[0] ?? "");
+  const result = await writeClaudeCodeSettings({
+    targetPath: getDefaultClaudeSettingsPath(),
+    proxy: {
+      baseURL: proxyBaseURL,
+      authToken: profile.proxy ? (await readToolConfig()).proxy.authToken : profile.apiKey ?? "",
+      enableModelDiscovery: profile.proxy ?? false,
+      defaultModel: profile.models[0] ?? "",
+      models: profile.models,
+      modelMapping
+    }
+  });
+  output.write(`Updated Claude Code settings: ${result.targetPath}\n`);
+}
+
+function mergeProfileIntoCommand(
+  command: Extract<CliCommand, { command: "setup" }>,
+  profile: ProviderProfile
+): Extract<CliCommand, { command: "setup" }> {
+  const opts = { ...command.options };
+  opts.providerName ??= profile.name;
+  opts.providerId ??= profile.id;
+  opts.baseURL ??= profile.baseURL;
+  opts.apiKey ??= profile.apiKey;
+  opts.models ??= profile.models.length > 0 ? profile.models : undefined;
+  opts.opencodeApiType ??= profile.opencodeApiType;
+  if (profile.proxy !== undefined && opts.proxy === undefined) {
+    opts.proxy = profile.proxy;
+  }
+
+  return {
+    ...command,
+    profileId: profile.id,
+    target: command.target ?? profile.target as TargetId | undefined,
+    options: opts
+  };
 }
 
 interface ProviderSelection {
@@ -285,6 +463,18 @@ async function writeOpenCodeSetup(
     return;
   }
 
+  // Persist complete profile with target, opencodeApiType, and proxy
+  await upsertProviderProfile(selection.toolConfigPath, {
+    id: selection.providerId,
+    name: selection.providerName,
+    baseURL: selection.upstreamBaseURL,
+    apiKey: selection.apiKey.trim() || undefined,
+    models: selection.selectedModels,
+    target: "opencode",
+    opencodeApiType,
+    proxy: useProxy
+  });
+
   const result = await writeProviderToConfig({ targetPath, providerId: selection.providerId, provider });
   output.write(`Saved profile ${selection.providerId} to ${selection.toolConfigPath}\n`);
   output.write(`Updated ${result.targetPath}\n`);
@@ -326,6 +516,17 @@ async function writeClaudeCodeSetup(
     }
   });
 
+  // Persist complete profile
+  await upsertProviderProfile(selection.toolConfigPath, {
+    id: selection.providerId,
+    name: selection.providerName,
+    baseURL: selection.upstreamBaseURL,
+    apiKey: selection.apiKey.trim() || undefined,
+    models: selection.selectedModels,
+    target: "claude-code",
+    proxy: useProxy
+  });
+
   output.write(`Saved profile ${selection.providerId} to ${selection.toolConfigPath}\n`);
   output.write(`Updated Claude Code settings: ${result.targetPath}\n`);
   if (result.backupPath) {
@@ -363,6 +564,17 @@ async function writeCodexSetup(
     authCommand: "model-provider-x",
     authArgs: useProxy ? ["proxy", "token"] : ["config", "api-key", "--profile", selection.providerId],
     model: selection.defaultModel
+  });
+
+  // Persist complete profile
+  await upsertProviderProfile(selection.toolConfigPath, {
+    id: selection.providerId,
+    name: selection.providerName,
+    baseURL: selection.upstreamBaseURL,
+    apiKey: selection.apiKey.trim() || undefined,
+    models: selection.selectedModels,
+    target: "codex",
+    proxy: useProxy
   });
 
   output.write(`Saved profile ${selection.providerId} to ${selection.toolConfigPath}\n`);

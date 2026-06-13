@@ -15,9 +15,10 @@
   "homepage": "https://github.com/HughesCuit/model-provider-x#readme",
   "type": "module",
   "main": "dist/cli/index.js",
-  "bin": {
-    "model-provider-x": "dist/cli/index.js"
-  },
+"bin": {
+  "model-provider-x": "dist/cli/index.js",
+  "mpx": "dist/cli/index.js"
+},
   "files": [
     "dist",
     "README.md",
