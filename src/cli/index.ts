@@ -251,7 +251,8 @@ async function applySavedProfile(
   rl: ReturnType<typeof createInterface>,
   profile: ProviderProfile
 ): Promise<void> {
-  const target = profile.target ?? "opencode";
+  // Ask user to choose target IDE
+  const target = await resolveSetupTarget(rl, profile.target);
   const toolConfigPath = getDefaultToolConfigPath();
 
   if (target === "opencode") {
@@ -282,6 +283,9 @@ async function applySavedProfile(
     } else {
       output.write(`${JSON.stringify(fragment, null, 2)}\n`);
     }
+
+    // Update saved profile with target
+    await upsertProviderProfile(toolConfigPath, { ...profile, target });
     return;
   }
 
@@ -299,6 +303,9 @@ async function applySavedProfile(
       model: profile.models[0] ?? ""
     });
     output.write(`Updated Codex config: ${result.targetPath}\n`);
+
+    // Update saved profile with target
+    await upsertProviderProfile(toolConfigPath, { ...profile, target });
     return;
   }
 
@@ -319,6 +326,9 @@ async function applySavedProfile(
     }
   });
   output.write(`Updated Claude Code settings: ${result.targetPath}\n`);
+
+  // Update saved profile with target
+  await upsertProviderProfile(toolConfigPath, { ...profile, target });
 }
 
 function mergeProfileIntoCommand(
